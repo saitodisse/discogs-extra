@@ -1,0 +1,2266 @@
+Directory structure:
+└── bartve-disconnect/
+    ├── README.md
+    ├── HISTORY.md
+    ├── index.js
+    ├── LICENSE
+    ├── package.json
+    ├── lib/
+    │   ├── client.js
+    │   ├── collection.js
+    │   ├── database.js
+    │   ├── error.js
+    │   ├── list.js
+    │   ├── marketplace.js
+    │   ├── oauth.js
+    │   ├── queue.js
+    │   ├── user.js
+    │   ├── util.js
+    │   └── wantlist.js
+    └── test/
+        ├── all.js
+        ├── client.js
+        ├── database.js
+        ├── error.js
+        ├── queue.js
+        └── util.js
+
+================================================
+FILE: README.md
+================================================
+## About
+
+`disconnect` is a [Node.js](http://www.nodejs.org) client library that connects with the [Discogs.com API v2.0](http://www.discogs.com/developers/).
+
+[![Dependency Status](https://david-dm.org/bartve/disconnect.png)](https://david-dm.org/bartve/disconnect)
+
+## Features
+
+  * Covers all API endpoints
+  * Supports [pagination](http://www.discogs.com/developers/#page:home,header:home-pagination), [rate limiting](http://www.discogs.com/developers/#page:home,header:home-rate-limiting), etc.
+  * All database, marketplace and user functions implement a standard `function(err, data, rateLimit)` format for the callback or return a 
+    native JS [Promise](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise) when no callback is provided
+  * Easy access to protected endpoints with `Discogs Auth`
+  * Includes OAuth 1.0a tools. Just plug in your consumer key and secret and do the OAuth dance
+  * API functions grouped in their own namespace for easy access and isolation
+  
+## Todo
+
+  * Add more tests
+
+## Installation
+
+[![NPM](https://nodei.co/npm/disconnect.png?downloads=true)](https://nodei.co/npm/disconnect/)
+
+## Structure
+The global structure of `disconnect` looks as follows:
+```
+require('disconnect') -> new Client() -> oauth()
+                                      -> database()
+                                      -> marketplace()
+                                      -> user() -> collection()
+                                                -> wantlist()
+                                                -> list()
+                      -> util
+```
+
+## Usage
+
+### Quick start
+Here are some basic usage examples that connect with the public API. Error handling has been left out for demonstrational purposes.
+
+#### Init
+
+```javascript
+var Discogs = require('disconnect').Client;
+```
+#### Go!
+
+Get the release data for a release with the id 176126.
+```javascript
+var db = new Discogs().database();
+db.getRelease(176126, function(err, data){
+	console.log(data);
+});
+```
+
+Set your own custom [User-Agent](http://www.discogs.com/developers/#page:home,header:home-general-information). This is optional as when omitted `disconnect` will set a default one with the value `DisConnectClient/x.x.x` where `x.x.x` is the installed version of `disconnect`.
+```javascript
+var dis = new Discogs('MyUserAgent/1.0');
+```
+
+Get page 2 of USER_NAME's public collection showing 75 releases.
+The second param is the collection folder ID where 0 is always the "All" folder.
+```javascript
+var col = new Discogs().user().collection();
+col.getReleases('USER_NAME', 0, {page: 2, per_page: 75}, function(err, data){
+	console.log(data);
+});
+```
+
+### Promises
+When no callback is provided, the API functions return a native JS [Promise](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise) for easy chaining.
+
+```javascript
+var db = new Discogs().database();
+db.getRelease(1)
+	.then(function(release){ 
+		return db.getArtist(release.artists[0].id);
+	})
+	.then(function(artist){
+		console.log(artist.name);
+	});
+```
+
+### Output format
+User, artist and label profiles can be formatted in different ways: `plaintext`, `html` and `discogs`. `disconnect` defaults to `discogs`, but the output format can be set for each client instance.
+```javascript
+// Set the output format to HTML
+var dis = new Discogs().setConfig({outputFormat: 'html'});
+```
+
+### Discogs Auth
+Just provide the client constructor with your preferred way of [authentication](http://www.discogs.com/developers/#page:authentication).
+```javascript
+// Authenticate by user token
+var dis = new Discogs({userToken: 'YOUR_USER_TOKEN'});
+
+// Authenticate by consumer key and secret
+var dis = new Discogs({
+	consumerKey: 'YOUR_CONSUMER_KEY', 
+	consumerSecret: 'YOUR_CONSUMER_SECRET'
+});
+```
+
+The User-Agent can still be passed for authenticated calls.
+```javascript
+var dis = new Discogs('MyUserAgent/1.0', {userToken: 'YOUR_USER_TOKEN'});
+```
+
+### OAuth
+Below are the steps that involve getting a valid OAuth access token from Discogs. Note that in the following examples the `app` variable is an [Express instance](http://expressjs.com/starter/hello-world.html) to handle incoming HTTP requests.
+
+#### 1. Get a request token
+```javascript
+app.get('/authorize', function(req, res){
+	var oAuth = new Discogs().oauth();
+	oAuth.getRequestToken(
+		'YOUR_CONSUMER_KEY', 
+		'YOUR_CONSUMER_SECRET', 
+		'http://your-script-url/callback', 
+		function(err, requestData){
+			// Persist "requestData" here so that the callback handler can 
+			// access it later after returning from the authorize url
+			res.redirect(requestData.authorizeUrl);
+		}
+	);
+});
+```
+
+#### 2. Authorize
+After redirection to the Discogs authorize URL in step 1, authorize the application.
+
+#### 3. Get an access token
+```javascript
+app.get('/callback', function(req, res){
+	var oAuth = new Discogs(requestData).oauth();
+	oAuth.getAccessToken(
+		req.query.oauth_verifier, // Verification code sent back by Discogs
+		function(err, accessData){
+			// Persist "accessData" here for following OAuth calls 
+			res.send('Received access token!');
+		}
+	);
+});
+```
+
+#### 4. Make OAuth calls
+Simply provide the constructor with the `accessData` object persisted in step 3.
+```javascript
+app.get('/identity', function(req, res){
+	var dis = new Discogs(accessData);
+	dis.getIdentity(function(err, data){
+		res.send(data);
+	});
+});
+```
+
+### Images
+Image requests themselves don't require authentication, but obtaining the image URLs through, for example, release data does.
+```javascript
+var db = new Discogs(accessData).database();
+db.getRelease(176126, function(err, data){
+	var url = data.images[0].resource_url;
+	db.getImage(url, function(err, data, rateLimit){
+		// Data contains the raw binary image data
+		require('fs').writeFile('/tmp/image.jpg', data, 'binary', function(err){
+			console.log('Image saved!');
+		});
+	});
+});
+```
+
+## Resources
+
+  * [Discogs API documentation](http://www.discogs.com/developers/)
+  * [The OAuth Bible](http://oauthbible.com/)
+
+## License
+
+MIT
+
+
+================================================
+FILE: HISTORY.md
+================================================
+1.2.2 / 2021-02-04
+==================
+  * Fixed accept headers for non-json data
+
+1.2.1 / 2017-09-04
+==================
+  * Fixed bug in image downloads (and any url different from `api.discogs.com`)
+
+1.2.0 / 2017-06-07
+==================
+  * Query parameter is now optional for `database.search()`
+  * Implemented different request limits for authenticated and non-authenticated clients
+
+1.1.0 / 2017-02-23
+==================
+  * Implemented new Discogs rate limiting headers. The rate limit param in a callback now looks like: `{ limit: 240, used: 1, remaining: 239 }`
+
+1.0.2 / 2016-11-10
+==================
+  * Added `collection().getReleaseInstances()`
+
+1.0.1 / 2016-11-03
+==================
+  * Fixed issue with `database().search()` when using a `Promise`
+
+1.0.0 / 2016-10-27
+==================
+  * When no callback is provided, all API functions now return a native JS `Promise`
+  * Removed the non get/set method calls like `database.release(...)` deprecated in release `0.8.0`
+
+0.9.1 / 2016-10-24
+==================
+  * Upgraded OAuth library to `oauth-1.0a` v2.0.0
+
+0.9.0 / 2016-06-15
+==================
+  * Added `user().getLists()`
+  * Added the new `user().list()` namespace for other list functions. Currently only contains `getItems()`.
+
+0.8.0 / 2016-04-13
+==================
+  * Added the new release rating endpoints
+  * Changed a lot of function names to more consistent ones. Old function calls still work, but a deprecation 
+    notice is shown on the console and the old function names will be removed in the next major version.
+
+0.7.2 / 2016-02-09
+==================
+  * Fixed default maximum number of requests per minute
+
+0.7.1 / 2016-01-26
+==================
+  * Added `database().labelReleases()` function
+
+0.7.0 / 2016-01-25
+==================
+  * The `util.queue` object literal has been replaced by a minimal `util.Queue` class
+  * `DiscogsClient` now has two new config params `requestLimit` and `requestLimitInterval`
+
+0.6.8 / 2015-11-06
+==================
+  * Dependency updates
+  * Fixed a minor bug in `DiscogsClient.authenticated()`
+
+0.6.7 / 2015-09-15
+==================
+  * Fixed regression bug from version `0.6.6` involving double URL query string encoding in `database().search()`
+
+0.6.6 / 2015-08-31
+==================
+  * An empty search query in `database().search()` will no longer add the `q=` param to the search URL
+
+0.6.5 / 2015-08-27
+==================
+  * Fixed a bug in `util.merge()`
+
+0.6.4 / 2015-07-09
+==================
+  * Prevent `JSON.parse()` crash when the Discogs API returns HTML instead of json (maintainance mode)
+  * Added Discogs API version to `DiscogsClient` config (only the default `v2` is supported at the moment)
+
+0.6.3 / 2015-05-28
+==================
+  * Updated `oauth-1.0a` dependency
+
+0.6.2 / 2015-02-25
+==================
+  * `database().image()` now requires the full image url as the first parameter due to the new Discogs image cluster
+  * Local request throttling by `disconnect` has been disabled for `database().image()`
+
+0.6.1 / 2015-02-17
+==================
+  * Added setting output format for user, artist and label profiles through `DiscogsClient.setConfig({outputFormat: 'html'})`
+
+0.6.0 / 2015-01-19
+==================
+  * OAuth authentication is no longer embedded in `DiscogsClient`
+  * Added OAuth signature method configuration option
+  * Added support for the new `Discogs Auth` authentication methods
+  * Changed default OAuth signature method to `PLAINTEXT` due to problems with `HMAC-SHA1` + database search
+
+0.5.3 / 2014-12-02
+==================
+  * Fixed incorrect assumption that a Discogs order ID is numeric in `marketplace().orders()`
+
+0.5.2 / 2014-10-30
+==================
+  * Fixed incorrect reference to `this` from within a callback function in `DiscogsClient.about()`
+  * The internal `oauth` object of `DiscogsClient` now only gets 3 status values: `null`, `request` and `access`
+
+0.5.1 / 2014-10-29
+==================
+  * Fixed a test which was failing due to changes in `0.5.0` and `npm test` now runs the tests
+  * Added the possibility to set a custom configuration object with `DiscogsClient.setConfig()` for Browserify + CORS or Proxy use cases
+  * Updated `README.md` to explain the `app` variable
+
+0.5.0 / 2014-10-22
+==================
+  * Replaced some short circuit evaluations and improved the general readability of `client.js`
+  * Implemented a more elegant way to require OAuth authentication for the `get()`, `post()`, `put()` and `delete()` functions of `DiscogsClient`
+  * **Breaking change:** `DiscogsClient.getAccessToken()` now only accepts **two** parameters: `verifier` and `callback`. 
+    The former `requestObject` parameter is now taken from the `oauth` property of the `DiscogsClient` instance. 
+    For further info see the updated `README.md`
+
+0.4.2 / 2014-10-20
+==================
+  * Fixed `this` scoping in `about()`
+  * Switched from `http` to the newly implemented `https` Discogs API connection for added security
+
+0.4.1 / 2014-10-16
+==================
+  * Fixed "Unexpected token u" error when trying to parse an `undefined` response value to JSON
+  * `marketplace().fee()` now accepts the price argument as both a number (int/float) and a literal string
+
+0.4.0 / 2014-10-15
+==================
+  * Use `strict`
+  * Added local authentication check for the `database().search()` function
+
+0.3.4 / 2014-07-30
+==================
+  * Added `user().contributions()` and `user().submissions()` for the newly implemented endpoints
+
+0.3.3 / 2014-07-08
+==================
+  * Discogs has fixed the `/images/<filename>` endpoint, so changed `database().image()` accordingly
+
+0.3.2 / 2014-07-01
+==================
+  * Added `about()` function to get general info about the Discogs API and the `disconnect` client
+
+0.3.1 / 2014-06-26
+==================
+  * Fixed a little bug in the calculation of free positions in the request queue
+  * Started adding unit tests using `wru`
+
+0.3.0 / 2014-06-24
+==================
+  * Added automatic request throttle of 1 request per second queueing up to 10 requests
+  * Exposed the request queueing functions in `util.queue`
+
+0.2.1 / 2014-06-20
+==================
+  * Fixed data encoding bug for gzipped response from `0.2.0`
+  * First implementation of generic error handling using custom `Error` objects containing the HTTP status code
+
+0.2.0 / 2014-06-19
+==================
+  * Implemented/fixed broken `database().image()` function from `0.1.1`
+  * Added rate limiting header info to the callback params
+
+0.1.1 / 2014-06-18
+==================
+  * Added `HISTORY.md`
+  * Fixed some object reference bugs 
+  * Compacted the `DiscogsClient` constructor
+  * Added the collection folder functions
+  * Added the `image` function to the `database` namespace
+
+0.1.0 / 2014-06-18
+==================
+  * Initial public release
+
+
+
+================================================
+FILE: index.js
+================================================
+'use strict';
+
+var discogs = module.exports = {};
+
+/**
+ * Expose Discogs utility function library
+ */
+ 
+discogs.util = require('./lib/util.js');
+
+/**
+ * Expose Discogs Client class
+ */
+
+discogs.Client = require('./lib/client.js');
+
+
+================================================
+FILE: LICENSE
+================================================
+(The MIT License)
+
+Copyright (c) 2014-2017 B. van Eijck <voodoo107@hotmail.com>
+
+Permission is hereby granted, free of charge, to any person obtaining
+a copy of this software and associated documentation files (the
+'Software'), to deal in the Software without restriction, including
+without limitation the rights to use, copy, modify, merge, publish,
+distribute, sublicense, and/or sell copies of the Software, and to
+permit persons to whom the Software is furnished to do so, subject to
+the following conditions:
+
+The above copyright notice and this permission notice shall be
+included in all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED 'AS IS', WITHOUT WARRANTY OF ANY KIND,
+EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
+IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
+CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
+TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
+SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+
+
+================================================
+FILE: package.json
+================================================
+{
+  "name": "disconnect",
+  "description": "A full-featured Discogs API v2.0 client library",
+  "version": "1.2.2",
+  "keywords": ["discogs", "api", "client", "oauth"],
+  "homepage": "https://github.com/bartve/disconnect",
+  "bugs": "https://github.com/bartve/disconnect/issues",
+  "license": "MIT",
+  "author": "Bart van Eijck <voodoo107@hotmail.com>",
+  "main": "index.js",
+  "directories": {
+    "lib": "./lib"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/bartve/disconnect.git"
+  },
+  "scripts": {
+    "test": "node test/all.js"
+  },
+  "dependencies": {
+    "oauth-1.0a": "2.x.x"
+  },
+  "devDependencies": {
+    "nock": "2.x.x",
+    "wru": "0.x.x"
+  },
+  "engines": {
+    "node": ">= 0.12.0"
+  }
+}
+
+
+================================================
+FILE: lib/client.js
+================================================
+'use strict';
+
+var https = require('https'),
+    zlib = require('zlib'),
+    url = require('url'),
+    pkg = require('../package.json'),
+    error = require('./error.js'),
+    util = require('./util.js');
+
+module.exports = DiscogsClient;
+
+/**
+ * Default configuration
+ */
+
+var defaultConfig = {
+    host: 'api.discogs.com',
+    port: 443,
+    userAgent: 'DisConnectClient/' + pkg.version + ' +' + pkg.homepage,
+    apiVersion: 'v2',
+    outputFormat: 'discogs',    // Possible values: 'discogs' / 'plaintext' / 'html'
+    requestLimit: 25,           // Maximum number of requests to the Discogs API per interval
+    requestLimitAuth: 60,       // Maximum number of requests to the Discogs API per interval when authenticated
+    requestLimitInterval: 60000 // Request interval in milliseconds
+};
+
+/**
+ * The request queue, shared by all DiscogsClient instances
+ * @type {Queue}
+ */
+
+var queue = require('./queue.js')({
+    maxCalls: defaultConfig.requestLimit,
+    interval: defaultConfig.requestLimitInterval
+});
+
+/**
+ * Object constructor
+ * @param {string} [userAgent] - The name of the user agent to use to make API calls
+ * @param {object} [auth] - Optional authorization data object
+ * @return {DiscogsClient}
+ */
+
+function DiscogsClient(userAgent, auth) {
+    // Allow the class to be called as a function, returning an instance
+    if (!(this instanceof DiscogsClient)) {
+        return new DiscogsClient(userAgent, auth);
+    }
+    // Set the default configuration
+    this.config = util.merge({}, defaultConfig);
+    // Set the custom User Agent when provided
+    if (typeof userAgent === 'string') {
+        this.config.userAgent = userAgent;
+    }
+    // No userAgent provided, but instead we have an accessObject
+    if ((arguments.length === 1) && (typeof userAgent === 'object')) {
+        auth = userAgent;
+    }
+    // Set auth data when provided
+    if (auth && (typeof auth === 'object')) {
+        queue.setConfig({maxCalls: this.config.requestLimitAuth});
+        if (!auth.hasOwnProperty('method')) {
+            auth.method = 'discogs';
+        }
+        if (!auth.hasOwnProperty('level')) {
+            if (auth.userToken) {
+                auth.level = 2;
+            } else if (auth.consumerKey && auth.consumerSecret) {
+                auth.level = 1;
+            }
+        }
+        this.auth = util.merge({}, auth);
+    // Unauthenticated new client instances will decrease the shared request limit
+    } else {
+        queue.setConfig({maxCalls: this.config.requestLimit});
+    }
+}
+
+/**
+ * Override the default configuration
+ * @param {object} customConfig - Custom configuration object for Browserify/CORS/Proxy use cases
+ * @return {DiscogsClient}
+ */
+DiscogsClient.prototype.setConfig = function(customConfig) {
+    util.merge(this.config, customConfig);
+    queue.setConfig({
+        maxCalls: (this.authenticated() ? this.config.requestLimitAuth : this.config.requestLimit),
+        interval: this.config.requestLimitInterval
+    });
+    return this;
+};
+
+/**
+ * Return whether the client is authenticated for the optionally given access level
+ * @param {number} [level] - Optional authentication level
+ * @return {boolean}
+ */
+
+DiscogsClient.prototype.authenticated = function(level) {
+    level = level || 0;
+    return (!(typeof this.auth === 'undefined') && (this.auth.level > 0) && (this.auth.level >= level));
+};
+
+/**
+ * Test authentication by getting the identity resource for the authenticated user
+ * @param {function} callback - Callback function receiving the data
+ * @return {DiscogsClient|Promise}
+ */
+
+DiscogsClient.prototype.getIdentity = function(callback) {
+    return this.get({url: '/oauth/identity', authLevel: 2}, callback);
+};
+
+/**
+ * Get info about the Discogs API and this client
+ * @param {function} callback - Callback function receiving the data
+ */
+
+DiscogsClient.prototype.about = function(callback) {
+    var clientInfo = {
+        version: pkg.version,
+        userAgent: this.config.userAgent,
+        authMethod: (this.auth ? this.auth.method : 'none'),
+        authLevel: (this.auth ? this.auth.level : 0)
+    };
+    if (typeof callback === 'function') {
+        return this.get('', function(err, data) {
+            data && (data.disconnect = clientInfo);
+            callback(err, data);
+        });
+    }
+    return this.get('').then(function(data) {
+        data && (data.disconnect = clientInfo);
+        return data;
+    });
+};
+
+/**
+ * Send a raw request
+ * @param {object} options - Request options 
+ * {
+ *		url: '', // May be a relative path when accessing the discogs API
+ *		method: '', // Defaults to GET
+ *		data: {} // POST/PUT data as an object
+ * }
+ * @param {function} callback - Callback function receiving the data
+ * @return {DiscogsClient}
+ */
+
+DiscogsClient.prototype._rawRequest = function(options, callback) {
+    var data = options.data || null,
+        method = options.method || 'GET',
+        urlParts = url.parse(options.url),
+        encoding = options.encoding || 'utf8';
+
+    // Build request headers
+    var headers = {
+        'User-Agent': this.config.userAgent,
+        'Accept': 'application/vnd.discogs.' + this.config.apiVersion + '.' + this.config.outputFormat + '+json,application/octet-stream',
+        'Accept-Encoding': 'gzip,deflate',
+        'Host': urlParts.host || this.config.host,
+        'Connection': 'close',
+        'Content-Length': 0
+    };
+
+    // Add content headers for POST/PUT requests that contain data
+    if (data) {
+        if (typeof data === 'object') {
+            data = JSON.stringify(data);
+        } // Convert data to a JSON string when data is an object/array
+        headers['Content-Type'] = 'application/json'; // Discogs accepts data in JSON format
+        headers['Content-Length'] = Buffer.byteLength(data, 'utf8');
+    }
+
+    // Add Authorization header when authenticated (or in the process of authenticating)
+    if (this.auth && (this.auth.consumerKey || this.auth.userToken)) {
+        var authHeader = '';
+        if (this.auth.method === 'oauth') {
+            var fullUrl = (urlParts.protocol && urlParts.host) ? urlParts.href : 'https://' + this.config.host + urlParts.path;
+            authHeader = this.oauth().toHeader(method, fullUrl);
+        } else if (this.auth.method === 'discogs') {
+            authHeader = 'Discogs';
+            if (this.auth.userToken) {
+                authHeader += ' token=' + this.auth.userToken;
+            } else if (this.auth.consumerKey) {
+                authHeader += ' key=' + this.auth.consumerKey + ', secret=' + this.auth.consumerSecret;
+            }
+        }
+        headers['Authorization'] = authHeader;
+    }
+
+    // Set the HTTPS request options
+    var requestOptions = {
+        host: urlParts.host || this.config.host,
+        port: urlParts.port || this.config.port,
+        path: urlParts.path,
+        method: method,
+        headers: headers
+    };
+
+    // Build the HTTPS request	
+    var req = https.request(requestOptions, function(res) {
+        var data = '', rateLimit = null, add = function(chunk) {
+            data += chunk.toString();
+        };
+
+        // Pass the data to the callback and pass an error on unsuccessful HTTP status
+        var passData = function() {
+            var err = null, status = parseInt(res.statusCode, 10);
+            if (status > 399) { // Unsuccessful HTTP status? Then pass an error to the callback
+                var match = data.match(/^\{"message": "(.+)"\}/i);
+                err = new error.DiscogsError(status, ((match && match[1]) ? match[1] : null));
+            }
+            callback(err, data, rateLimit);
+        };
+
+        // Find and add rate limiting when present
+        if (res.headers['x-discogs-ratelimit']) {
+            rateLimit = {
+                limit: parseInt(res.headers['x-discogs-ratelimit'], 10),
+                used: parseInt(res.headers['x-discogs-ratelimit-used'], 10),
+                remaining: parseInt(res.headers['x-discogs-ratelimit-remaining'], 10)
+            };
+        }
+
+        // Get the response content and pass it to the callback
+        switch (res.headers['content-encoding']) {
+            case 'gzip':
+                var gunzip = zlib.createGunzip().on('data', add).on('end', passData);
+                res.pipe(gunzip);
+                break;
+            case 'deflate':
+                var inflate = zlib.createInflate().on('data', add).on('end', passData);
+                res.pipe(inflate);
+                break;
+            default:
+                // Set encoding when provided
+                res.setEncoding(encoding);
+                res.on('data', add).on('end', passData);
+        }
+    }).on('error', function(err) {
+        callback(err);
+    });
+
+    // When present, write the data to the request
+    if (data) {
+        req.write(data);
+    }
+
+    req.end();
+    return this;
+};
+
+/**
+ * Send a request and parse text response to JSON
+ * @param {object} options - Request options
+ * {
+ *		url: '', // May be a relative path when accessing the Discogs API
+ *		method: '', // Defaults to GET
+ *		data: {} // POST/PUT data as an object
+ * }
+ * @param {function} [callback] - Callback function receiving the data
+ * @return {DiscogsClient|Promise}
+ */
+
+DiscogsClient.prototype._request = function(options, callback) {
+    var client = this,
+            doRequest = function() {
+                client._rawRequest(options, function(err, data, rateLimit) {
+                    if (data && options.json && (data.indexOf('<!') !== 0)) {
+                        data = JSON.parse(data);
+                    }
+                    callback(err, data, rateLimit);
+                });
+            },
+            prepareRequest = function() {
+                // Check whether authentication is required
+                if (!options.authLevel || client.authenticated(options.authLevel)) {
+                    if (options.queue) { // Add API request to the execution queue
+                        queue.add(function(err) {
+                            if (!err) {
+                                doRequest(callback);
+                            } else { // Can't add to the queue because it's full
+                                callback(err);
+                            }
+                        });
+                    } else { // Don't queue, just do the request
+                        doRequest(callback);
+                    }
+                } else {
+                    callback(new error.AuthError());
+                }
+            };
+
+    // By default, queue requests
+    if (!options.hasOwnProperty('queue')) {
+        options.queue = true;
+    }
+    // By default, expect responses to be JSON
+    if (!options.hasOwnProperty('json')) {
+        options.json = true;
+    }
+
+    if (typeof callback === 'function') {
+        prepareRequest();
+        return this;
+    }
+    // No callback provided? Return a Promise
+    return new Promise(function(resolve, reject) {
+        callback = function(err, data) {
+            (err && reject(err)) || resolve(data);
+        };
+        prepareRequest();
+    });
+};
+
+/**
+ * Perform a GET request against the Discogs API
+ * @param {(object|string)} options - Request options object or an url
+ * @param {function} [callback] - Callback function receiving the data
+ * @return {DiscogsClient|Promise}
+ */
+
+DiscogsClient.prototype.get = function(options, callback) {
+    if (typeof options === 'string') {
+        options = {url: options};
+    }
+    return this._request(options, callback);
+};
+
+/**
+ * Perform a POST request against the Discogs API
+ * @param {(object|string)} options - Request options object or an url
+ * @param {object} data - POST data
+ * @param {function} [callback] - Callback function receiving the data
+ * @return {DiscogsClient|Promise}
+ */
+
+DiscogsClient.prototype.post = function(options, data, callback) {
+    if (typeof options === 'string') {
+        options = {url: options};
+    }
+    return this._request(util.merge(options, {method: 'POST', data: data}), callback);
+};
+
+/**
+ * Perform a PUT request against the Discogs API
+ * @param {(object|string)} options - Request options object or an url
+ * @param {object} data - PUT data
+ * @param {function} [callback] - Callback function receiving the data
+ * @return {DiscogsClient|Promise}
+ */
+
+DiscogsClient.prototype.put = function(options, data, callback) {
+    if (typeof options === 'string') {
+        options = {url: options};
+    }
+    return this._request(util.merge(options, {method: 'PUT', data: data}), callback);
+};
+
+/**
+ * Perform a DELETE request against the Discogs API
+ * @param {(object|string)} options - Request options object or an url
+ * @param {function} [callback] - Callback function receiving the data
+ * @return {DiscogsClient|Promise}
+ */
+
+DiscogsClient.prototype.delete = function(options, callback) {
+    if (typeof options === 'string') {
+        options = {url: options};
+    }
+    return this._request(util.merge(options, {method: 'DELETE'}), callback);
+};
+
+/**
+ * Get an instance of the Discogs OAuth class
+ * @return {DiscogsOAuth}
+ */
+
+DiscogsClient.prototype.oauth = function() {
+    var OAuth = require('./oauth.js');
+    return new OAuth(this.auth);
+};
+
+/**
+ * Expose the database functions and pass the current instance
+ * @return {object}
+ */
+
+DiscogsClient.prototype.database = function() {
+    return require('./database.js')(this);
+};
+
+/**
+ * Expose the marketplace functions and pass the current instance
+ * @return {object}
+ */
+
+DiscogsClient.prototype.marketplace = function() {
+    return require('./marketplace.js')(this);
+};
+
+/**
+ * Expose the user functions and pass the current instance
+ * @return {object}
+ */
+
+DiscogsClient.prototype.user = function() {
+    return require('./user.js')(this);
+};
+
+
+
+================================================
+FILE: lib/collection.js
+================================================
+'use strict';
+
+var util = require('./util.js'),
+	AuthError = require('./error.js').AuthError;
+
+module.exports = function(client){
+	var collection = {};
+	
+	/**
+	 * Get a list of all collection folders for the given user
+	 * @param {string} user - The user name
+	 * @param {function} callback - The callback
+	 * @returns {DiscogsClient|Promise}
+	 */
+	
+	collection.getFolders = function(user, callback){
+		return client.get('/users/'+util.escape(user)+'/collection/folders', callback);
+	};
+	
+	/**
+	 * Get metadata for a specified collection folder
+	 * @param {string} user - The Discogs user name
+	 * @param {number|string} folder - A folder ID (0 = public folder)
+	 * @param {function} callback - The callback
+	 * @returns {DiscogsClient|Promise}
+	 */
+	
+	collection.getFolder = function(user, folder, callback){
+		if(client.authenticated(2) || (parseInt(folder, 10) === 0)){
+			return client.get('/users/'+util.escape(user)+'/collection/folders/'+folder, callback);
+		}else if(typeof callback === 'function'){
+			callback(new AuthError());
+			return client;
+		}else{
+			return Promise.reject(new AuthError());
+		}
+	};
+	
+	/**
+	 * Add a new collection folder
+	 * @param {string} user - The user name
+	 * @param {string} name - The folder name
+	 * @param {function} [callback] - The callback
+	 * @returns {DiscogsClient|Promise}
+	 */
+	
+	collection.addFolder = function(user, name, callback){
+		return client.post({url: '/users/'+util.escape(user)+'/collection/folders', authLevel: 2}, {name: name}, callback);
+	};
+	
+	/**
+	 * Change a folder name. The name of folder 0 and 1 can't be changed.
+	 * @param {string} user - The user name
+	 * @param {(number|string)}	folder - The folder ID
+	 * @param {string} name - The new folder name
+	 * @param {function} [callback] - The callback
+	 * @returns {DiscogsClient|Promise}
+	 */
+	
+	collection.setFolderName = function(user, folder, name, callback){
+		return client.post({url: '/users/'+util.escape(user)+'/collection/folders/'+folder, authLevel: 2}, {name: name}, callback);
+	};
+	
+	/**
+	 * Delete a folder. A folder must be empty before it can be deleted.
+	 * @param {string} user - The user name
+	 * @param {(number|string)}	folder - The folder ID
+	 * @param {function} [callback] - The callback
+	 * @returns {DiscogsClient|Promise}
+	 */
+	
+	collection.deleteFolder = function(user, folder, callback){
+		return client.delete({url: '/users/'+util.escape(user)+'/collection/folders/'+folder, authLevel: 2}, callback);
+	};
+	
+	/**
+	 * Get the releases in a user's collection folder (0 = public folder)
+	 * @param {string} user - The user name
+	 * @param {(number|string)} folder - The folder ID
+	 * @param {object} [params] - Optional extra pagination and sorting params, see url above
+	 * @param {function} [callback] - The callback
+	 * @returns {DiscogsClient|Promise}
+	 */
+	
+	collection.getReleases = function(user, folder, params, callback){
+		if(client.authenticated(2) || (parseInt(folder, 10) === 0)){
+			var path = '/users/'+util.escape(user)+'/collection/folders/'+folder+'/releases';
+			if((arguments.length === 3) && (typeof params === 'function')){
+				callback = params;
+			}else{
+				path = util.addParams(path, params);
+			}
+			return client.get(path, callback);
+		}else if(typeof callback === 'function'){
+			callback(new AuthError());
+			return client;
+		}else{
+			return Promise.reject(new AuthError());
+		}
+	};
+	
+	/**
+	 * Get the instances of a release in a user's collection
+	 * @param {string} user - The user name
+	 * @param {(number|string)} release - The release ID
+	 * @param {function} [callback] - The callback
+	 * @returns {DiscogsClient|Promise}
+	 */
+	
+	collection.getReleaseInstances = function(user, release, callback){
+		return client.get('/users/'+util.escape(user)+'/collection/releases/'+release, callback);
+	};
+	
+	/**
+	 * Add a release instance to the (optionally) given collection folder
+	 * @param {string} user - The user name
+	 * @param {(number|string)} [folder] - The folder ID (defaults to the "Uncategorized" folder)
+	 * @param {(number|string)} release - The release ID
+	 * @param {function} [callback] - The callback
+	 * @returns {DiscogsClient|Promise}
+	 */
+	
+	collection.addRelease = function(user, folder, release, callback){
+		if((arguments.length === 3) && (typeof release === 'function')){
+			callback = release; release = folder; folder = 1;
+		}
+		return client.post({url: '/users/'+util.escape(user)+'/collection/folders/'+(folder||1)+'/releases/'+release, authLevel: 2}, null, callback);
+	};
+	
+	/**
+	 * Edit a release instance in the given collection folder
+	 * @param {string} user - The user name
+	 * @param {(number|string)} folder - The folder ID
+	 * @param {(number|string)} release - The release ID
+	 * @param {(number|string)} instance - The release instance ID
+	 * @param {object} data - The instance data {rating: 4, folder_id: 1532}
+	 * @param {function} [callback] - The callback
+	 * @returns {DiscogsClient|Promise}
+	 */
+	
+	collection.editRelease = function(user, folder, release, instance, data, callback){
+		return client.post({url: '/users/'+util.escape(user)+'/collection/folders/'+folder+'/releases/'+release+'/instances/'+instance, authLevel: 2}, data, callback);
+	};
+	
+	/**
+	 * Delete a release instance from the given folder
+	 * @param {string} user - The user name
+	 * @param {(number|string)} folder - The folder ID
+	 * @param {(number|string)} release - The release ID
+	 * @param {(number|string)} instance - The release instance ID
+	 * @param {function} [callback] - The callback
+	 * @returns {DiscogsClient|Promise}
+	 */
+	
+	collection.removeRelease = function(user, folder, release, instance, callback){
+		return client.delete({url: '/users/'+util.escape(user)+'/collection/folders/'+folder+'/releases/'+release+'/instances/'+instance, authLevel: 2}, callback);
+	};
+	
+	return collection;
+};
+
+
+================================================
+FILE: lib/database.js
+================================================
+'use strict';
+
+var util = require('./util.js');
+
+module.exports = function(client) {
+    var database = {};
+
+    /**
+     * Expose Discogs database status constants
+     */
+
+    database.status = {accepted: 'Accepted', draft: 'Draft', deleted: 'Deleted', rejected: 'Rejected'};
+
+    /**
+     * Get artist data
+     * @param {(number|string)} artist - The Discogs artist ID
+     * @param {object} [options] - Show releases by the artist + pagination params
+     * @param {function} [callback] - Callback function
+     * @return {DiscogsClient|Promise}
+     */
+
+    database.getArtist = function(artist, callback) {
+        return client.get('/artists/' + artist, callback);
+    };
+
+    /**
+     * Get artist release data
+     * @param {(number|string)} artist - The Discogs artist ID
+     * @param {object} [params] - Optional pagination params
+     * @param {function} [callback] - Callback function
+     * @return {DiscogsClient|Promise}
+     */
+
+    database.getArtistReleases = function(artist, params, callback) {
+        var path = '/artists/' + artist + '/releases';
+        if ((arguments.length === 2) && (typeof params === 'function')) {
+            callback = params;
+        } else {
+            path = util.addParams(path, params);
+        }
+        return client.get(path, callback);
+    };
+
+    /**
+     * Get release data
+     * @param {(number|string)} release - The Discogs release ID
+     * @param {function} [callback] - Callback 
+     * @return {DiscogsClient|Promise}
+     */
+
+    database.getRelease = function(release, callback) {
+        return client.get('/releases/' + release, callback);
+    };
+
+    /**
+     * Get the release rating for the given user
+     * @param {(number|string)} release - The Discogs release ID
+     * @param {string} user - The Discogs user name
+     * @param {function} [callback] - Callback function
+     * @return {DiscogsClient|Promise}
+     */
+
+    database.getReleaseRating = function(release, user, callback) {
+        return client.get('/releases/' + release + '/rating/' + util.escape(user), callback);
+    };
+
+    /**
+     * Set (or remove) a release rating for the given logged in user
+     * @param {(number|string)} release - The Discogs release ID
+     * @param {string} user - The Discogs user name
+     * @param {number} rating - The new rating for a release between 1 and 5. Null = remove rating
+     * @param {function} [callback] - Callback function
+     * @return {DiscogsClient|Promise}
+     */
+
+    database.setReleaseRating = function(release, user, rating, callback) {
+        var url = '/releases/' + release + '/rating/' + util.escape(user);
+        if (!rating) {
+            return client.delete({url: url, authLevel: 2}, callback);
+        } else {
+            return client.put({url: url, authLevel: 2}, {rating: ((rating > 5) ? 5 : rating)}, callback);
+        }
+    };
+
+    /**
+     * Get master release data
+     * @param {(number|string)} master - The Discogs master release ID
+     * @param {function} [callback] - Callback function
+     * @return {DiscogsClient|Promise}
+     */
+
+    database.getMaster = function(master, callback) {
+        return client.get('/masters/' + master, callback);
+    };
+
+    /**
+     * Get the release versions contained in the given master release
+     * @param {(number|string)} master - The Discogs master release ID
+     * @param {object} [params] - optional pagination params
+     * @param {function} [callback] - Callback function
+     * @return {DiscogsClient|Promise}
+     */
+
+    database.getMasterVersions = function(master, params, callback) {
+        var path = '/masters/' + master + '/versions';
+        if ((arguments.length === 2) && (typeof params === 'function')) {
+            callback = params;
+        } else {
+            path = util.addParams(path, params);
+        }
+        return client.get(path, callback);
+    };
+
+    /**
+     * Get label data
+     * @param {(number|string)} label - The Discogs label ID
+     * @param {function} [callback] - Callback function
+     * @return {DiscogsClient|Promise}
+     */
+
+    database.getLabel = function(label, callback) {
+        return client.get('/labels/' + label, callback);
+    };
+
+    /**
+     * Get label release data
+     * @param {(number|string)} label - The Discogs label ID
+     * @param {object} [params] - Optional pagination params
+     * @param {function} [callback] - Callback function
+     * @return {DiscogsClient|Promise}
+     */
+
+    database.getLabelReleases = function(label, params, callback) {
+        var path = '/labels/' + label + '/releases';
+        if ((arguments.length === 2) && (typeof params === 'function')) {
+            callback = params;
+        } else {
+            path = util.addParams(path, params);
+        }
+        return client.get(path, callback);
+    };
+
+    /**
+     * Get an image
+     * @param {string} url - The full image url
+     * @param {function} [callback] - Callback function
+     * @return {DiscogsClient|Promise}
+     */
+
+    database.getImage = function(url, callback) {
+        return client.get({url: url, encoding: 'binary', queue: false, json: false}, callback);
+    };
+
+    /**
+     * Search the database
+     * @param {string} query - The search query
+     * @param {object} [params] - Search parameters as defined on http://www.discogs.com/developers/#page:database,header:database-search
+     * @param {function} [callback] - Callback function
+     * @return {DiscogsClient|Promise}
+     */
+
+    database.search = function(query, params, callback) {
+        var obj = {};
+        if ((arguments.length === 2) && (typeof params === 'function')) {
+            callback = params;
+        }
+        if (typeof params === 'object') {
+            obj = params;
+        } else if (typeof query === 'object') {
+            obj = query;
+        }
+        if (typeof query === 'string') {
+            obj.q = query;
+        }
+        return client.get({url: util.addParams('/database/search', obj), authLevel: 1}, callback);
+    };
+
+    return database;
+};
+
+
+================================================
+FILE: lib/error.js
+================================================
+'use strict';
+
+var Errors = module.exports = {};
+
+/**
+ * Discogs generic error
+ * @param {number} [statusCode] - A HTTP status code
+ * @param {string} [message] - The error message
+ * @returns {DiscogsError}
+ */
+
+function DiscogsError(statusCode, message){
+	Error.captureStackTrace(this, this.constructor);
+	this.statusCode = statusCode||404;
+	this.message = message||'Unknown error.';
+}
+DiscogsError.prototype = Object.create(Error.prototype, {
+	constructor: {value: DiscogsError},
+	name: {value: 'DiscogsError'},
+	toString: {value: function(){
+		return this.name+': '+this.statusCode+' '+this.message;
+	}}
+});
+Errors.DiscogsError = DiscogsError;
+
+/**
+ * Discogs authorization error
+ * @returns {AuthError}
+ */
+
+function AuthError(){
+	Error.captureStackTrace(this, this.constructor);
+}
+AuthError.prototype = Object.create(DiscogsError.prototype, {
+	constructor: {value: AuthError},
+	name: {value: 'AuthError'},
+	message: {value: 'You must authenticate to access this resource.'},
+	statusCode: {value: 401}
+});
+Errors.AuthError = AuthError;
+
+
+================================================
+FILE: lib/list.js
+================================================
+'use strict';
+
+var util = require('./util.js');
+
+module.exports = function(client){
+	var list = {};
+	
+	/**
+	 * Get the items in a list by list ID
+	 * @param {(number|string)} list - The list ID
+	 * @param {object} [params] - Optional pagination params
+	 * @param {function} [callback] - The callback
+	 * @return {DiscogsClient|Promise}
+	 */
+	
+	list.getItems = function(list, params, callback){
+		var path = '/lists/'+util.escape(list);
+		if((arguments.length === 2) && (typeof params === 'function')){
+			callback = params;
+		}else{
+			path = util.addParams(path, params);
+		}
+		return client.get(path, callback);
+	};
+	
+	return list;
+};
+
+
+================================================
+FILE: lib/marketplace.js
+================================================
+'use strict';
+
+var util = require('./util.js');
+
+module.exports = function(client){
+	var marketplace = {};
+	
+	/**
+	 * Copy the getInventory function from the user module
+	 */
+	
+	marketplace.getInventory = require('./user.js')(client).getInventory;
+	
+	/**
+	 * Get a marketplace listing
+	 * @param {(number|string)} listing - The listing ID
+	 * @param {function} [callback] - The callback
+	 * @return {DiscogsClient|Promise}
+	 */
+	
+	marketplace.getListing = function(listing, callback){
+		return client.get('/marketplace/listings/'+listing, callback);
+	};
+	
+	/**
+	 * Create a marketplace listing
+	 * @param {object} data - The data for the listing
+	 * @param {function} [callback] - The callback
+	 * @return {DiscogsClient|Promise}
+	 */
+	
+	marketplace.addListing = function(data, callback){
+		return client.post({url: '/marketplace/listings', authLevel: 2}, data, callback);
+	};
+	
+	/**
+	 * Edit a marketplace listing
+	 * @param {(number|string)} listing - The listing ID 
+	 * @param {object} data - The data for the listing
+	 * @param {function} [callback] - The callback
+	 * @return {DiscogsClient|Promise}
+	 */
+	
+	marketplace.editListing = function(listing, data, callback){
+		return client.post({url: '/marketplace/listings/'+listing, authLevel: 2}, data, callback);
+	};
+	
+	/**
+	 * Delete a marketplace listing
+	 * @param {(number|string)} [listing] - The listing ID 
+	 * @param {function} [callback] - The callback
+	 * @return {DiscogsClient|Promise}
+	 */
+	
+	marketplace.deleteListing = function(listing, callback){
+		return client.delete({url: '/marketplace/listings/'+listing, authLevel: 2}, callback);
+	};
+	
+	/**
+	 * Get a list of the authenticated user's orders
+	 * @param {object} [params] - Optional sorting and pagination params
+	 * @param {function} [callback] - The callback
+	 * @return {DiscogsClient|Promise}
+	 */
+	
+	marketplace.getOrders = function(params, callback){
+		var path = '/marketplace/orders';
+		if((arguments.length === 1) && (typeof params === 'function')){
+			callback = params;
+		}else if(typeof params === 'object'){
+			path = util.addParams(path, params);
+		}
+		return client.get({url: path, authLevel: 2}, callback);
+	};
+	
+	/**
+	 * Get details of a marketplace order
+	 * @param {string} order - The order ID 
+	 * @param {function} [callback] - The callback
+	 * @return {DiscogsClient|Promise}
+	 */
+	
+	marketplace.getOrder = function(order, callback){
+		return client.get({url: '/marketplace/orders/'+order, authLevel: 2}, callback);
+	};
+	
+	/**
+	 * Edit a marketplace order
+	 * @param {string} order - The order ID 
+	 * @param {object} data - The data for the order
+	 * @param {function} [callback] - The callback
+	 * @return {DiscogsClient|Promise}
+	 */
+	
+	marketplace.editOrder = function(order, data, callback){
+		return client.post({url: '/marketplace/orders/'+order, authLevel: 2}, data, callback);
+	};
+	
+	/**
+	 * List the messages for the given order ID
+	 * @param {string} order - The order ID
+	 * @param {object} [params] - Optional pagination parameters 
+	 * @param {function} [callback] - The callback
+	 * @return {DiscogsClient|Promise}
+	 */
+	
+	marketplace.getOrderMessages = function(order, params, callback){
+		var path = '/marketplace/orders/'+order+'/messages';
+		if((arguments.length === 2) && (typeof params === 'function')){
+			callback = params;
+		}else{
+			path = util.addParams(path, params);
+		}
+		return client.get({url: path, authLevel: 2}, callback);
+	};
+	
+	/**
+	 * Add a message to the given order ID
+	 * @param {string} order - The order ID
+	 * @param {object} data - The message data 
+	 * @param {function} [callback] - The callback
+	 * @return {DiscogsClient|Promise}
+	 */
+	
+	marketplace.addOrderMessage = function(order, data, callback){
+		return client.post({url: '/marketplace/orders/'+order+'/messages', authLevel: 2}, data, callback);
+	};
+	
+	/**
+	 * Get the marketplace fee for a given price
+	 * @param {(number|string)} price - The price as a number or string
+	 * @param {string} [currency] - Optional currency as one of USD, GBP, EUR, CAD, AUD, or JPY. Defaults to USD.
+	 * @param {function} [callback] - The callback
+	 * @return {DiscogsClient|Promise}
+	 */
+	
+	marketplace.getFee = function(price, currency, callback){
+		var path = '/marketplace/fee/'+((typeof price === 'number') ? price.toFixed(2) : price);
+		if((arguments.length === 2) && (typeof currency === 'function')){
+			callback = currency;
+		}else if(currency){ // Get the fee in a given currency
+			path += '/'+currency;
+		}
+		return client.get(path, callback);
+	};
+	
+	/**
+	 * Get price suggestions for a given release ID in the user's selling currency
+	 * @param {(number|string)} release - The release ID
+	 * @param {function} [callback] - The callback
+	 * @return {DiscogsClient|Promise}
+	 */
+	
+	marketplace.getPriceSuggestions = function(release, callback){
+		return client.get({url: '/marketplace/price_suggestions/'+release, authLevel: 2}, callback);
+	};
+	
+	return marketplace;
+};
+
+
+================================================
+FILE: lib/oauth.js
+================================================
+'use strict';
+
+var queryString = require('querystring'),
+	OAuth = require('oauth-1.0a'),
+	util = require('./util.js'),
+	Client = require('./client.js');
+
+/**
+ * Default configuration
+ */
+
+var defaultConfig = {
+	requestTokenUrl: 'https://api.discogs.com/oauth/request_token',
+	accessTokenUrl: 'https://api.discogs.com/oauth/access_token',
+	authorizeUrl: 'https://www.discogs.com/oauth/authorize',
+	version: '1.0', 
+	signatureMethod: 'PLAINTEXT' // Or HMAC-SHA1
+};
+
+module.exports = DiscogsOAuth;
+
+/**
+ * Object constructor
+ * @param {object} [auth] - Authentication object
+ * @returns {DiscogsOAuth}
+ */
+
+function DiscogsOAuth(auth){
+	this.config = util.merge({}, defaultConfig);
+	this.auth = {method: 'oauth', level: 0};
+	if(auth && (typeof auth === 'object') && (auth.method === 'oauth')){
+		util.merge(this.auth, auth);
+	}
+}
+
+/**
+ * Override the default configuration
+ * @param {object} customConfig - Custom configuration object for Browserify/CORS/Proxy use cases
+ * @returns {DiscogsOAuth}
+ */
+DiscogsOAuth.prototype.setConfig = function(customConfig){
+	util.merge(this.config, customConfig);
+	return this;
+};
+
+/**
+ * Get an OAuth request token from Discogs
+ * @param {string} consumerKey - The Discogs consumer key
+ * @param {string} consumerSecret - The Discogs consumer secret
+ * @param {string} callbackUrl - The url for redirection after obtaining the request token
+ * @param {function} [callback] - Callback function receiving the data
+ * @returns {DiscogsOAuth}
+ */
+ 
+DiscogsOAuth.prototype.getRequestToken = function(consumerKey, consumerSecret, callbackUrl, callback){
+	var auth = this.auth, config = this.config;
+	auth.consumerKey = consumerKey;
+	auth.consumerSecret = consumerSecret;
+	new Client(auth).get({url: config.requestTokenUrl+'?oauth_callback='+OAuth.prototype.percentEncode(callbackUrl), queue: false, json: false}, function(err, data){
+		if(!err && data){
+			data = queryString.parse(data);
+			auth.token = data.oauth_token;
+			auth.tokenSecret = data.oauth_token_secret;
+			auth.authorizeUrl = config.authorizeUrl+'?oauth_token='+data.oauth_token;
+		}
+		if(typeof callback === 'function'){ callback(err, auth); }
+	});
+	return this;
+};
+
+/**
+ * Get an OAuth access token from Discogs
+ * @param {string} verifier - The OAuth 1.0a verification code returned by Discogs
+ * @param {function} [callback] - Callback function receiving the data
+ * @returns {DiscogsOAuth}
+ */
+ 
+DiscogsOAuth.prototype.getAccessToken = function(verifier, callback){
+	var auth = this.auth;
+	new Client(auth).get({url: this.config.accessTokenUrl+'?oauth_verifier='+OAuth.prototype.percentEncode(verifier), queue: false, json: false}, function(err, data){
+		if(!err && data){
+			data = queryString.parse(data);
+			auth.token = data.oauth_token;
+			auth.tokenSecret = data.oauth_token_secret;
+			auth.level = 2;
+			delete auth.authorizeUrl;
+		}
+		if(typeof callback === 'function'){ callback(err, auth); }
+	});
+	return this;
+};
+
+/**
+ * Generic function to return the auth object
+ * @returns {object}
+ */
+DiscogsOAuth.prototype.export = function(){
+	return this.auth;
+};
+
+/**
+ * Parse the OAuth HTTP header content
+ * @param {string} requestMethod - The upper case HTTP request method (GET, POST, etc)
+ * @param {string} url - The url that is to be accessed
+ * @returns {string}
+ */
+DiscogsOAuth.prototype.toHeader = function(requestMethod, url){
+	var oAuth = new OAuth({
+		consumer: {key: this.auth.consumerKey, secret: this.auth.consumerSecret},
+		signature_method: this.config.signatureMethod, version: this.config.version
+	}),
+	authObj = oAuth.authorize({method: requestMethod, url: url}, {key: this.auth.token, secret: this.auth.tokenSecret});
+	return oAuth.toHeader(authObj).Authorization;
+};
+
+
+================================================
+FILE: lib/queue.js
+================================================
+'use strict';
+
+var DiscogsError = require('./error.js').DiscogsError,
+	util = require('./util.js');
+
+module.exports = Queue;
+
+/**
+ * Default configuration
+ * @type {object}
+ */
+
+var defaultConfig = {
+	maxStack: 20, // Max 20 calls queued in the stack
+	maxCalls: 60, // Max 60 calls per interval
+	interval: 60000, // 1 minute interval
+};
+
+/**
+ * Object constructor
+ * @param {object} [customConfig] - Optional custom configuration object
+ * @returns {Queue}
+ */
+
+function Queue(customConfig){
+	// Allow the class to be called as a function, returning an instance
+	if(!(this instanceof Queue)){
+        return new Queue(customConfig);
+	}
+	// Set the default configuration
+	this.config = util.merge({}, defaultConfig);
+	if(customConfig && (typeof customConfig === 'object')){
+		this.setConfig(customConfig);
+	}
+	this._stack = [];
+	this._firstCall = 0;
+	this._callCount = 0;
+}
+
+/**
+ * Override the default configuration
+ * @param {object} customConfig - Custom configuration object
+ * @returns {object}
+ */
+
+Queue.prototype.setConfig = function(customConfig){
+	util.merge(this.config, customConfig);
+	return this;
+};
+
+/**
+ * Add a function to the queue. Usage:
+ * 
+ * queue.add(function(err, freeCallsRemaining, freeStackPositionsRemaining){
+ *     if(!err){
+ *         // Do something 
+ *     }
+ * });
+ * 
+ * @param {function} callback - The function to schedule for execution
+ * @returns {object}
+ */
+
+Queue.prototype.add = function(callback){
+	if(this._stack.length === 0){
+		var now = Date.now();
+		// Within call interval limits: Just execute the callback
+		if(this._callCount < this.config.maxCalls){
+			this._callCount++;
+			if(this._callCount === 1){
+				this._firstCall = now;
+			}
+			setTimeout(callback, 0, null, (this.config.maxCalls - this._callCount), this.config.maxStack);
+		// Upon reaching the next interval: Execute callback and reset
+		}else if((now - this._firstCall) > this.config.interval){
+			this._callCount = 1;
+			this._firstCall = now;
+			setTimeout(callback, 0, null, (this.config.maxCalls - this._callCount), this.config.maxStack);
+		// Within the interval exceeding call limit: Queue the call
+		}else{
+			this._pushStack(callback);
+		}
+	// Current stack is not empty and must be processed first, queue new calls
+	}else{
+		this._pushStack(callback);
+	}
+	return this;
+};
+
+/**
+ * Push a callback on the callback stack to be executed
+ * @param {function} callback
+ */
+
+Queue.prototype._pushStack = function(callback){
+	if(this._stack.length < this.config.maxStack){
+		var factor = Math.ceil((this._stack.length / this.config.maxCalls)),
+		    timeout = ((this._firstCall + (this.config.interval * factor)) - Date.now()) + (this._stack.length % this.config.maxCalls) + 1;
+		this._stack.push({
+			callback: callback,
+			timeout: setTimeout(this._callStack, timeout, this)
+		});
+	}else{ // Queue max length exceeded: Pass an error to the callback
+		setTimeout(callback, 0, new DiscogsError(429, 'Too many requests'), 0, 0);
+	}
+};
+
+/**
+ * Shift a function from the callback stack and call it
+ * @param {Queue} [queue] - Async calls need the queue instance
+ */
+
+Queue.prototype._callStack = function(queue){
+	queue = queue||this;
+	queue._stack.shift().callback.call(queue, null, 0, (queue.config.maxStack - queue._stack.length));
+	queue._callCount++;
+};
+
+/**
+ * Clear the request stack. All queued requests/callbacks will be cancelled!
+ * @returns {object}
+ */
+
+Queue.prototype.clear = function(){
+	var item;
+	while(item = this._stack.shift()){
+		clearTimeout(item.timeout);
+	}
+	return this;
+};
+
+
+================================================
+FILE: lib/user.js
+================================================
+'use strict';
+
+var util = require('./util.js');
+
+module.exports = function(client){
+	var user = {};
+	
+	/**
+	 * Get the profile for the given user
+	 * @param {string} user - The user name
+	 * @param {function} [callback] - The callback
+	 * @return {DiscogsClient|Promise}
+	 */
+
+	user.getProfile = function(user, callback){
+		return client.get('/users/'+util.escape(user), callback);
+	};
+	
+	/**
+	 * Get the inventory for the given user
+	 * @param {string} user - The user name
+	 * @param {object} [params] - Extra params like status, sort and sort_order, pagination
+	 * @param {function} [callback] - The callback
+	 * @return {DiscogsClient|Promise}
+	 */
+
+	user.getInventory = function(user, params, callback){
+		var path = '/users/'+util.escape(user)+'/inventory';
+		if((arguments.length === 2) && (typeof params === 'function')){
+			callback = params;
+		}else{ // Add pagination params when present
+			path = util.addParams(path, params);
+		}
+		return client.get(path, callback);
+	};
+	
+	/**
+	 * Copy the client getIdentity function to the user module
+	 */
+ 
+	user.getIdentity = client.getIdentity;
+	
+	/**
+	 * Expose the collection functions and pass the client instance
+	 * @returns {object}
+	 */
+	
+	user.collection = function(){
+		return require('./collection.js')(client);
+	};
+	
+	/**
+	 * Expose the wantlist functions and pass the client instance
+	 * @returns {object}
+	 */
+	
+	user.wantlist = function(){
+		return require('./wantlist.js')(client);
+	};
+	
+	/**
+	 * Expose the list functions and pass the client instance
+	 * @returns {object}
+	 */
+	
+	user.list = function(){
+		return require('./list.js')(client);
+	};
+	
+	/**
+	 * Get the contributions for the given user
+	 * @param {string} user - The user name
+	 * @param {object} [params] - Optional pagination and sorting params
+	 * @param {function} [callback] - The callback
+	 * @return {DiscogsClient|Promise}
+	 */
+	
+	user.getContributions = function(user, params, callback){
+		var path = '/users/'+util.escape(user)+'/contributions';
+		if((arguments.length === 2) && (typeof params === 'function')){
+			callback = params;
+		}else{ // Add pagination params when present
+			path = util.addParams(path, params);
+		}
+		return client.get(path, callback);
+	};
+	
+	/**
+	 * Get the submissions for the given user
+	 * @param {string} user - The user name
+	 * @param {object} [params] - Optional pagination params
+	 * @param {function} [callback] - The callback
+	 * @return {DiscogsClient|Promise}
+	 */
+	
+	user.getSubmissions = function(user, params, callback){
+		var path = '/users/'+util.escape(user)+'/submissions';
+		if((arguments.length === 2) && (typeof params === 'function')){
+			callback = params;
+		}else{ // Add pagination params when present
+			path = util.addParams(path, params);
+		}
+		return client.get(path, callback);
+	};
+	
+	/**
+	 * Get the lists for the given user
+	 * @param {string} user - The user name
+	 * @param {object} [params] - Optional pagination params
+	 * @param {function} [callback] - The callback
+	 * @return {DiscogsClient|Promise}
+	 */
+	
+	user.getLists = function(user, params, callback){
+		var path = '/users/'+util.escape(user)+'/lists';
+		if((arguments.length === 2) && (typeof params === 'function')){
+			callback = params;
+		}else{ // Add pagination params when present
+			path = util.addParams(path, params);
+		}
+		return client.get(path, callback);
+	};
+	
+	return user;
+};
+
+
+================================================
+FILE: lib/util.js
+================================================
+'use strict';
+
+var queryString = require('querystring');
+
+var util = module.exports = {};
+
+/**
+ * Strip the trailing number from a Discogs artist name Artist (2) -> Artist
+ * @param {string} name - The Discogs artist name
+ * @return {string}
+ */
+
+util.stripVariation = function(name){
+	return name.replace(/\s\(\d+\)$/, '');
+};
+
+/**
+ * Add params to a given url or path
+ * @param {string} url - The url to add the extra params to
+ * @param {object} data - Data object containing the params
+ * @returns {string}
+ */
+
+util.addParams = function(url, data){
+	if(data && (typeof data === 'object') && (Object.keys(data).length > 0)){
+		url = url+((url.indexOf('?')===-1) ? '?' : '&')+queryString.stringify(data);
+	}
+	return url;
+};
+
+/**
+ * Escape a string for use in a query string
+ * @param {string} str - The string to escape
+ * @returns {string}
+ */
+
+util.escape = function(str){
+	return queryString.escape(str);
+};
+
+/**
+ * Deep merge two objects
+ * @param {object} target - The target object (by reference!)
+ * @param {object} source - The source object
+ * @returns {object}
+ */
+
+util.merge = function merge(target, source){
+	for(var key in source){
+		if(source[key] && (typeof source[key] === 'object')){
+			target[key] = merge((Array.isArray(source[key]) ? [] : {}), source[key]);
+		}else{
+			target[key] = source[key];
+		}
+	}
+	return target;
+};
+
+/**
+ * Expose the queuing class
+ */
+
+util.Queue = require('./queue.js');
+
+
+================================================
+FILE: lib/wantlist.js
+================================================
+'use strict';
+
+var util = require('./util.js');
+
+module.exports = function(client){
+	var wantlist = {};
+	
+	/**
+	 * Get the list of wantlisted releases for the given user name
+	 * @param {string} user - The user name
+	 * @param {object} [params] - Optional pagination params
+	 * @param {function} [callback] - The callback
+	 * @return {DiscogsClient|Promise}
+	 */
+	
+	wantlist.getReleases = function(user, params, callback){
+		var path = '/users/'+util.escape(user)+'/wants';
+		if((arguments.length === 2) && (typeof params === 'function')){
+			callback = params;
+		}else{
+			path = util.addParams(path, params);
+		}
+		return client.get(path, callback);
+	};
+	
+	/**
+	 * Add a release to the user's wantlist
+	 * @param {string} user - The user name
+	 * @param {(number|string)} release - The release ID
+	 * @param {object} [data] - Optional notes and rating 
+	 * @param {function} [callback] - The callback
+	 * @return {DiscogsClient|Promise}
+	 */
+	
+	wantlist.addRelease = function(user, release, data, callback){
+		var _data = data;
+		if((arguments.length === 3) && (typeof data === 'function')){
+			callback = data;
+			_data = null;
+		}
+		return client.put({url: '/users/'+util.escape(user)+'/wants/'+release, authLevel: 2}, _data, callback);
+	};
+	
+	/**
+	 * Edit the notes or rating on a release in the user's wantlist
+	 * @param {string} user - The user name
+	 * @param {(number|string)} release - The release ID
+	 * @param {object} data - The notes and rating {notes: 'Test', rating: 4}
+	 * @param {function} [callback] - The callback
+	 * @return {DiscogsClient|Promise}
+	 */
+	
+	wantlist.editNotes = function(user, release, data, callback){
+		return client.put({url: '/users/'+util.escape(user)+'/wants/'+release, authLevel: 2}, data, callback);
+	};
+	
+	/**
+	 * Remove a release from the user's wantlist
+	 * @param {string} user - The user name
+	 * @param {(number|string)} release - The release ID
+	 * @param {function} [callback] - The callback
+	 * @return {DiscogsClient|Promise}
+	 */
+	
+	wantlist.removeRelease = function(user, release, callback){
+		return client.delete({url: '/users/'+util.escape(user)+'/wants/'+release, authLevel: 2}, callback);
+	};
+	
+	return wantlist;
+};
+
+
+================================================
+FILE: test/all.js
+================================================
+var wru = require('wru'),
+	tests = [],
+	files = ['error','queue','util','client','database'];
+	
+for(var i in files){
+	tests = tests.concat(require('./'+files[i]+'.js'));
+}
+
+wru.test(tests);
+
+
+================================================
+FILE: test/client.js
+================================================
+var wru = require('wru'),
+    nock = require('nock'),
+    DiscogsClient = require('../lib/client.js');
+
+var tests = module.exports = [
+    {
+        name: 'DiscogsClient: Test instance',
+        test: function(){
+            wru.assert('Instance of DiscogsClient', (new DiscogsClient() instanceof DiscogsClient));
+        }
+    },{
+        name: 'DiscogsClient: Test authenticated()',
+        test: function(){
+            wru.assert('Authentication level 1 === false', (new DiscogsClient().authenticated(1) === false));
+        }
+    },{
+        name: 'DiscogsClient: Test get()',
+        test: function(){
+            var client = new DiscogsClient();
+            client.get({url: '/labels/1'}, wru.async(function(err, data){
+                wru.assert('No error', !err);
+                wru.assert('Correct response data', (data && (data.id === 1)));
+            }));
+        }
+    },{
+        name: 'DiscogsClient: Test Promise',
+        test: function(){
+            var client = new DiscogsClient();
+            var promise = client.about();
+            var isPromise = (typeof promise.then === 'function');
+            wru.assert('Returns Promise', isPromise);
+            if(isPromise){
+                promise.then(wru.async(function(data){
+                    wru.assert('Promis resolved', (typeof data.disconnect !== 'undefined'));
+                }));
+            }
+        }
+    },{
+        name: 'DiscogsClient: Test custom configuration',
+        test: function(){
+            nock('https://www.example.com').get('/labels/1').reply(200, '{"result": "success"}');
+
+            var client = new DiscogsClient().setConfig({host: 'www.example.com'});
+            client.get({url: '/labels/1'}, wru.async(function(err, data){
+                wru.assert('No error', !err);
+                wru.assert('Correct response data', (data && data.result === 'success'));
+            }));
+        },
+        teardown: function(){
+            nock.cleanAll();
+        }
+    }
+];
+
+if(!module.parent){
+    wru.test(tests);
+}
+
+
+================================================
+FILE: test/database.js
+================================================
+var wru = require('wru'),
+    nock = require('nock'),
+    DiscogsClient = require('../lib/client.js');
+
+var tests = module.exports = [
+    {
+        name: 'Database: Test search without query but with params',
+        test: function(){
+            nock('https://api.discogs.com').get('/database/search?artist=X&title=Y').reply(200, '{"result": "success"}');
+
+            var client = new DiscogsClient('agent', {consumerKey: 'u', consumerSecret: 'p'});
+            var db = client.database();
+            db.search({artist: 'X', title: 'Y'}, wru.async(function(err, data){
+                wru.assert('No error', !err);
+                wru.assert('Correct response data', (data && data.result === 'success'));
+            }));
+        },
+        teardown: function(){
+            nock.cleanAll();
+        }
+    },{
+        name: 'Database: Test search with query and params',
+        test: function() {
+            nock('https://api.discogs.com').get('/database/search?artist=X&title=Y&q=somequery').reply(200, '{"result": "success"}');
+
+            var client = new DiscogsClient('agent', {consumerKey: 'u', consumerSecret: 'p'});
+            var db = client.database();
+            db.search('somequery', {artist: 'X', title: 'Y'}, wru.async(function(err, data){
+                wru.assert('No error', !err);
+                wru.assert('Correct response data', (data && data.result === 'success'));
+            }));
+        },
+        teardown: function(){
+            nock.cleanAll();
+        }
+    },{
+        name: 'Database: Test search with query only',
+        test: function() {
+            nock('https://api.discogs.com').get('/database/search?q=somequery').reply(200, '{"result": "success"}');
+
+            var client = new DiscogsClient('agent', {consumerKey: 'u', consumerSecret: 'p'});
+            var db = client.database();
+            db.search('somequery', wru.async(function(err, data){
+                wru.assert('No error', !err);
+                wru.assert('Correct response data', (data && data.result === 'success'));
+            }));
+        },
+        teardown: function(){
+            nock.cleanAll();
+        }
+    }
+];
+
+if(!module.parent){
+    wru.test(tests);
+}
+
+
+================================================
+FILE: test/error.js
+================================================
+var wru = require('wru'),
+	error = require('../lib/error.js');
+
+var tests = module.exports = [
+	{
+		name: 'Error: Test DiscogsError',
+		test: function(){
+			var discogsError = new error.DiscogsError(403, 'Test');
+			wru.assert('Instance of DiscogsError', (discogsError instanceof error.DiscogsError));
+			wru.assert('Instance of Error', (discogsError instanceof Error));
+			wru.assert('Status code === 403', (discogsError.statusCode === 403));
+		}
+	},{
+		name: 'Error: Test AuthError',
+		test: function(){
+			var authError = new error.AuthError();
+			wru.assert('Instance of AuthError', (authError instanceof error.AuthError));
+			wru.assert('Instance of Error', (authError instanceof Error));
+			wru.assert('Status code === 401', (authError.statusCode === 401));
+		}
+	}
+];
+
+if(!module.parent){ wru.test(tests); }
+
+
+================================================
+FILE: test/queue.js
+================================================
+var wru = require('wru'),
+	queue = require('../lib/queue.js')();
+
+var tests = module.exports = [
+	{
+		name: 'Queue: Test setConfig()',
+		test: function(){
+			var customConfig = {
+				maxStack: 2, // Max 1 call queued in the stack
+				maxCalls: 5, // Max 5 calls per interval
+				interval: 5000, // 5 second interval
+			};
+			queue.setConfig(customConfig);
+			wru.assert('Custom config', customConfig.maxStack === queue.config.maxStack);
+		}
+	},{
+		name: 'Queue: Test add() + getLength() + clear()',
+		test: function(){
+			var dummy = function(){ return true; };
+			queue.add(dummy); //  1
+			queue.add(dummy); //  2
+			queue.add(dummy); //  3
+			queue.add(dummy); //  4
+			queue.add(wru.async(function(err, remainingFree, remainingStack){ // 5 (last free call)
+				wru.assert('Remaining free positions === 0', remainingFree === 0);
+				wru.assert('Remaining stack positions === 2', remainingStack === 2);
+			}));
+			queue.add(dummy); //  6 (first in the stack)
+			queue.add(dummy); //  7 (second in the stack)
+			queue.add(wru.async(function(err){ // 8! Overflow
+				wru.assert('Too many requests, err.statusCode === 429', (err && (err.statusCode === 429)));
+			}));
+			wru.assert('Stack is full', (queue._stack.length === 2));
+			queue.clear(); // Empty stack
+			wru.assert('Stack has been cleared', (queue._stack.length === 0));
+		}
+	}
+];
+
+if(!module.parent){ wru.test(tests); }
+
+
+================================================
+FILE: test/util.js
+================================================
+var wru = require('wru'),
+	util = require('../lib/util.js');
+
+var tests = module.exports = [
+	{
+		name: 'Util: Test stripVariation()',
+		test: function(){
+			var stripped = util.stripVariation('Artist (2)');
+			wru.log('Artist name "Artist (2)" becomes: '+stripped);
+			wru.assert('Strip artist variation', stripped === 'Artist');
+		}
+	},{
+		name: 'Util: Test escape()',
+		test: function(){
+			var escaped = util.escape('!@#$%^&*()+');
+			wru.log('Escaped string: '+escaped);
+			wru.assert('Escape string "!@#$%^&*()+"', (escaped === '!%40%23%24%25%5E%26*()%2B'));
+		}
+	},{
+		name: 'Util: Test addParams()',
+		test: function(){
+			wru.assert('URL with no query string', util.addParams('http://an-url.com', {foo: 'bar', baz: 1}) === 'http://an-url.com?foo=bar&baz=1');
+			wru.assert('URL with existing query string', util.addParams('http://an-url.com?y=5', {foo: 'bar', baz: 1}) === 'http://an-url.com?y=5&foo=bar&baz=1');
+		}
+	}
+];
+
+if(!module.parent){ wru.test(tests); }
+
+
+
+
+---
+
+Original API:
+
