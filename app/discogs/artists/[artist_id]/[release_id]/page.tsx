@@ -20,7 +20,7 @@ export default async function ReleasePage({
   ) {
     console.error("Missing required Discogs API credentials");
     return (
-      <div className="container mx-auto p-4">
+      <div className="container mx-auto p-4 min-w-2xl">
         <h1 className="text-2xl font-bold mb-4">Error</h1>
         <p>
           Missing required API credentials. Please check your environment
@@ -68,15 +68,15 @@ export default async function ReleasePage({
     };
 
     return (
-      <div className="container mx-auto p-4">
+      <div className="container mx-auto p-4 max-w-5xl w-lvw">
         <Link
           href={`/discogs/artists/${artist_id}`}
-          className="inline-flex items-center text-blue-600 hover:underline mb-6"
+          className="inline-flex items-center text-primary hover:underline mb-6"
         >
           ← Back to {artist?.name}
         </Link>
 
-        <div className="flex flex-col md:flex-row gap-8 mb-8">
+        <div className="flex flex-col md:flex-row gap-8 mb-8 w-full">
           {/* Cover Art */}
           <div className="w-full md:w-1/3 lg:w-1/4">
             <div className="relative aspect-square rounded-lg overflow-hidden shadow-lg">
@@ -89,7 +89,7 @@ export default async function ReleasePage({
                   priority
                 />
               ) : (
-                <div className="w-full h-full bg-gray-100 flex items-center justify-center text-gray-400">
+                <div className="w-full h-full bg-muted flex items-center justify-center text-muted-foreground">
                   No Image
                 </div>
               )}
@@ -168,7 +168,7 @@ export default async function ReleasePage({
           {/* Release Details */}
           <div className="flex-1">
             <h1 className="text-3xl font-bold mb-2">{release.title}</h1>
-            <h2 className="text-xl text-gray-600 mb-6">
+            <h2 className="text-xl text-muted-foreground mb-6">
               {release.artists && release.artists.map((a) => a.name).join(", ")}
             </h2>
 
@@ -194,7 +194,7 @@ export default async function ReleasePage({
                           >
                             <div className="flex justify-between items-center">
                               <div>
-                                <span className="text-gray-500 text-sm mr-2">
+                                <span className="text-muted-foreground text-sm mr-2">
                                   {track.position || `${index + 1}.`}
                                 </span>
                                 <span className="font-medium">
@@ -202,14 +202,14 @@ export default async function ReleasePage({
                                 </span>
                               </div>
                               {track.duration && (
-                                <span className="text-sm text-gray-500">
+                                <span className="text-sm text-muted-foreground">
                                   {track.duration}
                                 </span>
                               )}
                             </div>
                             {track.extraartists &&
                               track.extraartists.length > 0 && (
-                                <div className="text-sm text-gray-500 ml-6">
+                                <div className="text-sm text-muted-foreground ml-6">
                                   {track.extraartists
                                     .map((a: any) => a.name)
                                     .join(", ")}
@@ -237,11 +237,11 @@ export default async function ReleasePage({
                           (artist: any, index: number) => (
                             <div key={index} className="border rounded p-3">
                               <div className="font-medium">{artist.name}</div>
-                              <div className="text-sm text-gray-600">
+                              <div className="text-sm text-muted-foreground">
                                 {artist.role}
                               </div>
                               {artist.tracks && (
-                                <div className="text-xs text-gray-500 mt-1">
+                                <div className="text-xs text-muted-foreground mt-1">
                                   Tracks: {artist.tracks}
                                 </div>
                               )}
@@ -281,7 +281,7 @@ export default async function ReleasePage({
                           {release.videos.map((video: any, index: number) => (
                             <div
                               key={index}
-                              className="aspect-video bg-black rounded overflow-hidden"
+                              className="aspect-video bg-muted rounded overflow-hidden"
                             >
                               <iframe
                                 src={`https://www.youtube.com/embed/${video.uri.split("v=")[1]}`}

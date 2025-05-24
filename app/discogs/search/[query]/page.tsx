@@ -1,8 +1,8 @@
+import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
 import { Client } from "disconnect";
-import type { DatabaseSearchResponse } from "disconnect";
 import { NextPage } from "next";
 import Link from "next/link";
-import { notFound } from "next/navigation";
 
 interface SearchParams {
   params: {
@@ -63,6 +63,8 @@ const SearchPage: NextPage<SearchParams> = async ({ params, searchParams }) => {
       type,
       page,
       per_page: perPage,
+      // sort: "release_date",
+      // sort_order: "asc",
     });
 
     console.log(searchResponse);
@@ -99,19 +101,32 @@ const SearchPage: NextPage<SearchParams> = async ({ params, searchParams }) => {
 
   return (
     <div className="container mx-auto p-4">
+      <form
+        className="mb-6"
+        action={`/discogs/search/${encodeURIComponent(query)}`}
+        method="get"
+      >
+        <label htmlFor="search" className="sr-only">
+          Search Discogs
+        </label>
+        <Input type="text" placeholder="Search..." defaultValue={query} />
+        <button type="submit">Search</button>
+      </form>
+
       <h1 className="text-2xl font-bold mb-6">
         Search Results for "{decodeURIComponent(query)}" ({pagination.items}{" "}
         items)
       </h1>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+      <div className="grid grid-cols-1 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8 gap-6">
         {searchResults.map((item) => (
           <Link
             key={`${item.type}-${item.id}`}
             href={`/discogs/artists/${item.id}/${item.id}`}
-            className="block bg-white rounded-lg shadow-md overflow-hidden hover:shadow-lg transition-shadow"
+            className="block bg-card text-card-foreground rounded-lg shadow-md overflow-hidden hover:shadow-lg transition-shadow"
           >
-            <div className="aspect-square bg-gray-100 relative">
+            {" "}
+            <div className="aspect-square bg-muted relative">
               {item.thumb || item.cover_image ? (
                 <img
                   src={item.thumb || item.cover_image}
@@ -120,25 +135,15 @@ const SearchPage: NextPage<SearchParams> = async ({ params, searchParams }) => {
                   loading="lazy"
                 />
               ) : (
-                <div className="w-full h-full flex items-center justify-center text-gray-400">
+                <div className="w-full h-full flex items-center justify-center text-muted-foreground">
                   No Image
                 </div>
               )}
             </div>
             <div className="p-4">
-              <h2 className="font-semibold text-lg mb-1 line-clamp-2">
-                {item.title}
-              </h2>
-              <div className="text-sm text-gray-600">
-                {item.year && <div>Year: {item.year}</div>}
-                {item.format && <div>Format: {item.format.join(", ")}</div>}
-                {item.label && <div>Label: {item.label.join(", ")}</div>}
-                {item.genre && item.genre.length > 0 && (
-                  <div>Genre: {item.genre.join(", ")}</div>
-                )}
-                {item.style && item.style.length > 0 && (
-                  <div>Style: {item.style.join(", ")}</div>
-                )}
+              <h2 className="text-xs mb-1 line-clamp-2">{item.title}</h2>
+              <div className="text-sm text-muted-foreground">
+                {item.year && <Badge>{item.year}</Badge>}
               </div>
             </div>
           </Link>
@@ -150,7 +155,7 @@ const SearchPage: NextPage<SearchParams> = async ({ params, searchParams }) => {
           {page > 1 && (
             <Link
               href={`/discogs/search/${encodeURIComponent(query)}?page=${page - 1}${type ? `&type=${type}` : ""}`}
-              className="px-4 py-2 border rounded hover:bg-gray-100"
+              className="px-4 py-2 border rounded hover:bg-accent text-accent-foreground"
             >
               Previous
             </Link>
@@ -158,7 +163,7 @@ const SearchPage: NextPage<SearchParams> = async ({ params, searchParams }) => {
           {page < pagination.pages && (
             <Link
               href={`/discogs/search/${encodeURIComponent(query)}?page=${page + 1}${type ? `&type=${type}` : ""}`}
-              className="px-4 py-2 border rounded hover:bg-gray-100"
+              className="px-4 py-2 border rounded hover:bg-accent text-accent-foreground"
             >
               Next
             </Link>

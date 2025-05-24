@@ -89,7 +89,7 @@ export default async function ArtistPage({
                       href={url}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="text-blue-600 hover:underline"
+                      className="text-primary hover:underline"
                     >
                       {new URL(url).hostname}
                     </a>
@@ -108,14 +108,14 @@ export default async function ArtistPage({
               href={`/discogs/artists/${artistId}/${release.id}`}
               className="block"
             >
-              <Card className="h-full hover:bg-gray-50 transition-colors">
+              <Card className="h-full hover:bg-accent/50 transition-colors">
                 <CardHeader>
                   <CardTitle className="text-lg line-clamp-2">
                     {release.title}
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <div className="aspect-square bg-gray-100 rounded-md overflow-hidden mb-3">
+                  <div className="aspect-square bg-muted rounded-md overflow-hidden mb-3">
                     {release.thumb ? (
                       <Image
                         src={release.thumb}
@@ -125,12 +125,12 @@ export default async function ArtistPage({
                         className="w-full h-full object-cover"
                       />
                     ) : (
-                      <div className="w-full h-full flex items-center justify-center text-gray-400">
+                      <div className="w-full h-full flex items-center justify-center text-muted-foreground">
                         No Image
                       </div>
                     )}
                   </div>
-                  <div className="text-sm text-gray-600">
+                  <div className="text-sm text-muted-foreground">
                     {release.year && <div>Year: {release.year}</div>}
                     {release.format && (
                       <div>Format: {release.format.join(", ")}</div>
