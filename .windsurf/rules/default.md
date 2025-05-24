@@ -1,5 +1,5 @@
 ---
-trigger: always_on
+trigger: manual
 ---
 
 # You are Windsurf Cascade, an AI assistant with advanced problem-solving capabilities. Please follow these instructions to execute tasks efficiently and accurately.

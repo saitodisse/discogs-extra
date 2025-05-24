@@ -65,6 +65,8 @@ const SearchPage: NextPage<SearchParams> = async ({ params, searchParams }) => {
       per_page: perPage,
     });
 
+    console.log(searchResponse);
+
     searchResults = searchResponse.results as SearchResult[];
     pagination = {
       pages: searchResponse.pagination?.pages || 1,
@@ -106,7 +108,7 @@ const SearchPage: NextPage<SearchParams> = async ({ params, searchParams }) => {
         {searchResults.map((item) => (
           <Link
             key={`${item.type}-${item.id}`}
-            href={`/discogs/${item.type}/${item.id}`}
+            href={`/discogs/artists/${item.id}/${item.id}`}
             className="block bg-white rounded-lg shadow-md overflow-hidden hover:shadow-lg transition-shadow"
           >
             <div className="aspect-square bg-gray-100 relative">
