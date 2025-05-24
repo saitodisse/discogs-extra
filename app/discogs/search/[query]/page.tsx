@@ -1,3 +1,4 @@
+import { SearchInput } from "@/components/SearchInput";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Client } from "disconnect";
@@ -63,8 +64,6 @@ const SearchPage: NextPage<SearchParams> = async ({ params, searchParams }) => {
       type,
       page,
       per_page: perPage,
-      // sort: "release_date",
-      // sort_order: "asc",
     });
 
     console.log(searchResponse);
@@ -101,19 +100,12 @@ const SearchPage: NextPage<SearchParams> = async ({ params, searchParams }) => {
 
   return (
     <div className="container mx-auto p-4">
-      <form
-        className="mb-6"
-        action={`/discogs/search/${encodeURIComponent(query)}`}
-        method="get"
-      >
-        <label htmlFor="search" className="sr-only">
-          Search Discogs
-        </label>
-        <Input type="text" placeholder="Search..." defaultValue={query} />
-        <button type="submit">Search</button>
-      </form>
+      <SearchInput
+        initialQuery={decodeURIComponent(query)}
+        initialType={type}
+      />
 
-      <h1 className="text-2xl font-bold mb-6">
+      <h1 className="italic mb-6 mt-8">
         Search Results for "{decodeURIComponent(query)}" ({pagination.items}{" "}
         items)
       </h1>
@@ -122,7 +114,7 @@ const SearchPage: NextPage<SearchParams> = async ({ params, searchParams }) => {
         {searchResults.map((item) => (
           <Link
             key={`${item.type}-${item.id}`}
-            href={`/discogs/artists/${item.id}/${item.id}`}
+            href={getUrl(item)}
             className="block bg-card text-card-foreground rounded-lg shadow-md overflow-hidden hover:shadow-lg transition-shadow"
           >
             {" "}
@@ -172,6 +164,20 @@ const SearchPage: NextPage<SearchParams> = async ({ params, searchParams }) => {
       )}
     </div>
   );
+
+  function getUrl(item: SearchResult): string | import("url").UrlObject {
+    if (item.type === "artist") {
+      return `/discogs/artists/${item.id}`;
+    }
+    if (item.type === "label") {
+      return `/discogs/labels/${item.id}`;
+    }
+    if (item.type === "master") {
+      return `/discogs/masters/${item.id}`;
+    }
+    // Default to release if no type matches
+    return `/discogs/releases/${item.id}`;
+  }
 };
 
 export default SearchPage;
