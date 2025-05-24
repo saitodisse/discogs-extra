@@ -6,7 +6,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 ### Added
-- Initial project setup
+- 
 
 ### Changed
 - 
@@ -22,4 +22,5 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [0.1.0] - 2025-05-24
 ### Added
-- Project initialization
+- Initial project setup
+- CHANGELOG.md file to track project changes
