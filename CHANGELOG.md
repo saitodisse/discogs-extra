@@ -6,7 +6,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 ### Added
-- 
+- Set up Next.js route structure for Discogs integration
+  - Added artist, search, and dynamic route directories
+  - Created page components for artist, album, and search functionality
+  - Added loading states for better UX
 
 ### Changed
 - 
