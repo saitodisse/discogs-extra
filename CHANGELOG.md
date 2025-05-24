@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Added artist, search, and dynamic route directories
   - Created page components for artist, album, and search functionality
   - Added loading states for better UX
+- Added `disconnect` package (v1.2.2) for Discogs API integration
 
 ### Changed
 - 
