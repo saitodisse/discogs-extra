@@ -1,34 +1,34 @@
-"use client";
+'use client'
 
-import { useRouter } from "next/navigation";
-import { useState } from "react";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Search } from "lucide-react";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { Label } from "@/components/ui/label";
+import { useRouter } from 'next/navigation'
+import { useState } from 'react'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Search } from 'lucide-react'
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
+import { Label } from '@/components/ui/label'
 
-type SearchType = "release" | "master" | "artist" | "label";
+type SearchType = 'release' | 'master' | 'artist' | 'label'
 
 export function SearchInput({
-  initialQuery = "",
-  initialType = "release" as SearchType,
+  initialQuery = '',
+  initialType = 'release' as SearchType,
 }: {
-  initialQuery?: string;
-  initialType?: SearchType;
+  initialQuery?: string
+  initialType?: SearchType
 }) {
-  const router = useRouter();
-  const [query, setQuery] = useState(initialQuery);
-  const [type, setType] = useState<SearchType>(initialType);
+  const router = useRouter()
+  const [query, setQuery] = useState(initialQuery.replace(/_/g, ' '))
+  const [type, setType] = useState<SearchType>(initialType)
 
   const handleSearch = (e: React.FormEvent) => {
-    e.preventDefault();
+    e.preventDefault()
     if (query.trim()) {
       router.push(
-        `/discogs/search/${encodeURIComponent(query.trim())}?type=${type}`
-      );
+        `/discogs/search/${encodeURIComponent(query.trim().replace(/\s+/g, '_'))}?type=${type}`
+      )
     }
-  };
+  }
 
   return (
     <form onSubmit={handleSearch} className="w-full max-w-sm space-y-4">
@@ -41,7 +41,7 @@ export function SearchInput({
           className="flex-1"
         />
         <Button type="submit" variant="default">
-          <Search className="h-4 w-4 mr-2" />
+          <Search className="mr-2 h-4 w-4" />
           Search
         </Button>
       </div>
@@ -69,5 +69,5 @@ export function SearchInput({
         </div>
       </RadioGroup>
     </form>
-  );
+  )
 }

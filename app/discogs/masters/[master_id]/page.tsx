@@ -1,87 +1,82 @@
-import { Client } from "disconnect";
-import { NextPage } from "next";
-import { Badge } from "@/components/ui/badge";
-import { Card } from "@/components/ui/card";
-import Link from "next/link";
+import { Client } from 'disconnect'
+import { NextPage } from 'next'
+import { Badge } from '@/components/ui/badge'
+import { Card } from '@/components/ui/card'
+import Link from 'next/link'
+import { ExternalLink } from 'lucide-react'
 
 interface MasterPageProps {
   params: {
-    master_id: string;
-  };
+    master_id: string
+  }
 }
 
 interface Master {
-  id: number;
-  title: string;
+  id: number
+  title: string
   artists: Array<{
-    name: string;
-    id: number;
-  }>;
-  genres?: string[];
-  styles?: string[];
-  year?: number;
+    name: string
+    id: number
+  }>
+  genres?: string[]
+  styles?: string[]
+  year?: number
   images?: Array<{
-    uri: string;
-    height: number;
-    width: number;
-  }>;
+    uri: string
+    height: number
+    width: number
+  }>
   videos?: Array<{
-    uri: string;
-    title: string;
-    description: string;
-  }>;
-  data_quality?: string;
+    uri: string
+    title: string
+    description: string
+  }>
+  data_quality?: string
   tracklist: Array<{
-    position: string;
-    title: string;
-    duration: string;
-  }>;
-  uri: string;
-  description?: string;
-  notes?: string;
+    position: string
+    title: string
+    duration: string
+  }>
+  uri: string
+  description?: string
+  notes?: string
 }
 
 const MasterPage: NextPage<MasterPageProps> = async ({ params }) => {
-  if (
-    !process.env.DISCOGS_CONSUMER_KEY ||
-    !process.env.DISCOGS_CONSUMER_SECRET
-  ) {
+  if (!process.env.DISCOGS_CONSUMER_KEY || !process.env.DISCOGS_CONSUMER_SECRET) {
     return (
       <div className="container mx-auto p-4">
-        <h1 className="text-2xl font-bold mb-4">Error</h1>
-        <p>
-          Missing required API credentials. Please check your environment
-          variables.
-        </p>
+        <h1 className="mb-4 text-2xl font-bold">Error</h1>
+        <p>Missing required API credentials. Please check your environment variables.</p>
       </div>
-    );
+    )
   }
 
   const client = new Client({
-    method: "discogs",
+    method: 'discogs',
     consumerKey: process.env.DISCOGS_CONSUMER_KEY,
     consumerSecret: process.env.DISCOGS_CONSUMER_SECRET,
-  });
+  })
 
   try {
-    const master = await client
-      .database()
-      .getMaster(parseInt(params.master_id));
+    const master = await client.database().getMaster(parseInt(params.master_id))
+
+    console.log('Master data:', master)
 
     return (
       <div className="container mx-auto p-4">
         <Card className="w-full">
-          <div className="grid md:grid-cols-[300px_1fr] gap-6 p-6">
+          <div className="grid gap-6 p-6 md:grid-cols-[300px_1fr]">
             {/* Album Cover */}
-            <div className="aspect-square bg-muted relative rounded-lg overflow-hidden">
+            <div className="relative aspect-square overflow-hidden rounded-lg bg-muted">
               {master.images && master.images[0] ? (
                 <img
                   src={master.images[0].uri}
                   alt={master.title}
-                  className="w-full h-full object-cover"
+                  className="h-full w-full object-cover"
                 />
               ) : (
-                <div className="w-full h-full flex items-center justify-center text-muted-foreground">
+                <div className="flex h-full w-full items-center justify-center text-muted-foreground">
                   No Image
                 </div>
               )}
@@ -89,7 +84,21 @@ const MasterPage: NextPage<MasterPageProps> = async ({ params }) => {
 
             {/* Album Info */}
             <div>
-              <h1 className="text-3xl font-bold mb-2">{master.title}</h1>
+              <h1 className="mb-2 text-3xl font-bold">{master.title}</h1>
+
+              {master.uri && (
+                <div className="mb-4 font-thin">
+                  <a
+                    href={master.uri}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-sm text-primary underline"
+                  >
+                    discogs
+                    <ExternalLink className="ml-1 inline" size={14} />
+                  </a>
+                </div>
+              )}
 
               <div className="mb-4">
                 {master.artists &&
@@ -100,7 +109,7 @@ const MasterPage: NextPage<MasterPageProps> = async ({ params }) => {
                       className="text-blue-600 hover:underline"
                     >
                       {artist.name}
-                      {index < master.artists.length - 1 ? ", " : ""}
+                      {index < master.artists.length - 1 ? ', ' : ''}
                     </Link>
                   ))}
               </div>
@@ -113,7 +122,7 @@ const MasterPage: NextPage<MasterPageProps> = async ({ params }) => {
 
               <div className="mb-6">
                 {master.genres && (
-                  <div className="flex flex-wrap gap-2 mb-2">
+                  <div className="mb-2 flex flex-wrap gap-2">
                     {master.genres.map((genre) => (
                       <Badge key={genre} variant="secondary">
                         {genre}
@@ -141,20 +150,16 @@ const MasterPage: NextPage<MasterPageProps> = async ({ params }) => {
 
               {master.tracklist && master.tracklist.length > 0 && (
                 <div className="mb-6">
-                  <h2 className="text-xl font-semibold mb-2">Tracklist</h2>
+                  <h2 className="mb-2 text-xl font-semibold">Tracklist</h2>
                   <div className="grid gap-2">
                     {master.tracklist.map((track, index) => (
                       <div key={index} className="flex justify-between">
                         <div>
-                          <span className="text-muted-foreground mr-2">
-                            {track.position}.
-                          </span>
+                          <span className="mr-2 text-muted-foreground">{track.position}.</span>
                           {track.title}
                         </div>
                         {track.duration && (
-                          <span className="text-muted-foreground">
-                            {track.duration}
-                          </span>
+                          <span className="text-muted-foreground">{track.duration}</span>
                         )}
                       </div>
                     ))}
@@ -164,7 +169,7 @@ const MasterPage: NextPage<MasterPageProps> = async ({ params }) => {
 
               {master.videos && master.videos.length > 0 && (
                 <div className="mb-6">
-                  <h2 className="text-xl font-semibold mb-2">Videos</h2>
+                  <h2 className="mb-2 text-xl font-semibold">Videos</h2>
                   <div className="grid gap-4">
                     {master.videos.map((video, index) => (
                       <a
@@ -195,22 +200,19 @@ const MasterPage: NextPage<MasterPageProps> = async ({ params }) => {
           </div>
         </Card>
       </div>
-    );
+    )
   } catch (error) {
-    console.error("Error fetching master:", error);
+    console.error('Error fetching master:', error)
     return (
       <div className="container mx-auto p-4">
-        <h1 className="text-2xl font-bold mb-4">Error</h1>
-        <p>
-          There was an error fetching the master information. Please try again
-          later.
-        </p>
+        <h1 className="mb-4 text-2xl font-bold">Error</h1>
+        <p>There was an error fetching the master information. Please try again later.</p>
         <Link href="/discogs" className="text-blue-600 hover:underline">
           Back to search
         </Link>
       </div>
-    );
+    )
   }
-};
+}
 
-export default MasterPage;
+export default MasterPage

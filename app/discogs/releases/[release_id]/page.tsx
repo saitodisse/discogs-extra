@@ -1,104 +1,99 @@
-import { Client } from "disconnect";
-import { NextPage } from "next";
-import { Badge } from "@/components/ui/badge";
-import { Card } from "@/components/ui/card";
-import Link from "next/link";
+import { Client } from 'disconnect'
+import { NextPage } from 'next'
+import { Badge } from '@/components/ui/badge'
+import { Card } from '@/components/ui/card'
+import Link from 'next/link'
+import { ExternalLink } from 'lucide-react'
 
 interface ReleasePageProps {
   params: {
-    release_id: string;
-  };
+    release_id: string
+  }
 }
 
 interface Release {
-  id: number;
-  title: string;
+  id: number
+  title: string
   artists: Array<{
-    name: string;
-    id: number;
-  }>;
+    name: string
+    id: number
+  }>
   labels: Array<{
-    name: string;
-    id: number;
-    catno: string;
-  }>;
-  year?: number;
-  country?: string;
-  genres?: string[];
-  styles?: string[];
+    name: string
+    id: number
+    catno: string
+  }>
+  year?: number
+  country?: string
+  genres?: string[]
+  styles?: string[]
   formats?: Array<{
-    name: string;
-    qty: number;
-    descriptions?: string[];
-  }>;
+    name: string
+    qty: number
+    descriptions?: string[]
+  }>
   images?: Array<{
-    uri: string;
-    height: number;
-    width: number;
-  }>;
+    uri: string
+    height: number
+    width: number
+  }>
   videos?: Array<{
-    uri: string;
-    title: string;
-    description: string;
-  }>;
-  notes?: string;
+    uri: string
+    title: string
+    description: string
+  }>
+  notes?: string
   tracklist: Array<{
-    position: string;
-    title: string;
-    duration: string;
+    position: string
+    title: string
+    duration: string
     artists?: Array<{
-      name: string;
-      id: number;
-    }>;
-  }>;
-  uri: string;
+      name: string
+      id: number
+    }>
+  }>
+  uri: string
   identifiers?: Array<{
-    type: string;
-    value: string;
-  }>;
+    type: string
+    value: string
+  }>
 }
 
 const ReleasePage: NextPage<ReleasePageProps> = async ({ params }) => {
-  if (
-    !process.env.DISCOGS_CONSUMER_KEY ||
-    !process.env.DISCOGS_CONSUMER_SECRET
-  ) {
+  if (!process.env.DISCOGS_CONSUMER_KEY || !process.env.DISCOGS_CONSUMER_SECRET) {
     return (
       <div className="container mx-auto p-4">
-        <h1 className="text-2xl font-bold mb-4">Error</h1>
-        <p>
-          Missing required API credentials. Please check your environment
-          variables.
-        </p>
+        <h1 className="mb-4 text-2xl font-bold">Error</h1>
+        <p>Missing required API credentials. Please check your environment variables.</p>
       </div>
-    );
+    )
   }
 
   const client = new Client({
-    method: "discogs",
+    method: 'discogs',
     consumerKey: process.env.DISCOGS_CONSUMER_KEY,
     consumerSecret: process.env.DISCOGS_CONSUMER_SECRET,
-  });
+  })
 
   try {
-    const release = await client
-      .database()
-      .getRelease(parseInt(params.release_id));
+    const release = await client.database().getRelease(parseInt(params.release_id))
+
+    console.log('Release data:', release)
 
     return (
       <div className="container mx-auto p-4">
         <Card className="w-full">
-          <div className="grid md:grid-cols-[300px_1fr] gap-6 p-6">
+          <div className="grid gap-6 p-6 md:grid-cols-[300px_1fr]">
             {/* Release Cover */}
-            <div className="aspect-square bg-muted relative rounded-lg overflow-hidden">
+            <div className="relative aspect-square overflow-hidden rounded-lg bg-muted">
               {release.images && release.images[0] ? (
                 <img
                   src={release.images[0].uri}
                   alt={release.title}
-                  className="w-full h-full object-cover"
+                  className="h-full w-full object-cover"
                 />
               ) : (
-                <div className="w-full h-full flex items-center justify-center text-muted-foreground">
+                <div className="flex h-full w-full items-center justify-center text-muted-foreground">
                   No Image
                 </div>
               )}
@@ -106,7 +101,21 @@ const ReleasePage: NextPage<ReleasePageProps> = async ({ params }) => {
 
             {/* Release Info */}
             <div>
-              <h1 className="text-3xl font-bold mb-2">{release.title}</h1>
+              <h1 className="mb-2 text-3xl font-bold">{release.title}</h1>
+
+              {release.uri && (
+                <div className="mb-4 font-thin">
+                  <a
+                    href={release.uri}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-sm text-primary underline"
+                  >
+                    discogs
+                    <ExternalLink className="ml-1 inline" size={14} />
+                  </a>
+                </div>
+              )}
 
               <div className="mb-4">
                 {release.artists &&
@@ -117,9 +126,7 @@ const ReleasePage: NextPage<ReleasePageProps> = async ({ params }) => {
                       className="text-blue-600 hover:underline"
                     >
                       {artist.name}
-                      {release.artists && index < release.artists.length - 1
-                        ? ", "
-                        : ""}
+                      {release.artists && index < release.artists.length - 1 ? ', ' : ''}
                     </Link>
                   ))}
               </div>
@@ -135,9 +142,7 @@ const ReleasePage: NextPage<ReleasePageProps> = async ({ params }) => {
                         {label.name}
                       </Link>
                       {label.catno && (
-                        <span className="text-muted-foreground ml-2">
-                          (Cat# {label.catno})
-                        </span>
+                        <span className="ml-2 text-muted-foreground">(Cat# {label.catno})</span>
                       )}
                     </div>
                   ))}
@@ -145,9 +150,7 @@ const ReleasePage: NextPage<ReleasePageProps> = async ({ params }) => {
 
               <div className="mb-4 flex gap-2">
                 {release.year && <Badge>{release.year}</Badge>}
-                {release.country && (
-                  <Badge variant="outline">{release.country}</Badge>
-                )}
+                {release.country && <Badge variant="outline">{release.country}</Badge>}
               </div>
 
               {release.formats && (
@@ -155,12 +158,9 @@ const ReleasePage: NextPage<ReleasePageProps> = async ({ params }) => {
                   {release.formats.map((format, index) => (
                     <Badge key={index} variant="secondary" className="mr-2">
                       {format.qty}× {format.name}
-                      {format.descriptions &&
-                        format.descriptions.length > 0 && (
-                          <span className="ml-1">
-                            ({format.descriptions.join(", ")})
-                          </span>
-                        )}
+                      {format.descriptions && format.descriptions.length > 0 && (
+                        <span className="ml-1">({format.descriptions.join(', ')})</span>
+                      )}
                     </Badge>
                   ))}
                 </div>
@@ -168,7 +168,7 @@ const ReleasePage: NextPage<ReleasePageProps> = async ({ params }) => {
 
               <div className="mb-6">
                 {release.genres && (
-                  <div className="flex flex-wrap gap-2 mb-2">
+                  <div className="mb-2 flex flex-wrap gap-2">
                     {release.genres.map((genre) => (
                       <Badge key={genre} variant="secondary">
                         {genre}
@@ -189,32 +189,28 @@ const ReleasePage: NextPage<ReleasePageProps> = async ({ params }) => {
 
               {release.notes && (
                 <div className="mb-6">
-                  <h2 className="text-xl font-semibold mb-2">Notes</h2>
+                  <h2 className="mb-2 text-xl font-semibold">Notes</h2>
                   <p className="whitespace-pre-line">{release.notes}</p>
                 </div>
               )}
 
               {release.tracklist && release.tracklist.length > 0 && (
                 <div className="mb-6">
-                  <h2 className="text-xl font-semibold mb-2">Tracklist</h2>
+                  <h2 className="mb-2 text-xl font-semibold">Tracklist</h2>
                   <div className="grid gap-2">
                     {release.tracklist.map((track, index) => (
                       <div key={index} className="flex justify-between">
                         <div>
-                          <span className="text-muted-foreground mr-2">
-                            {track.position}.
-                          </span>
+                          <span className="mr-2 text-muted-foreground">{track.position}.</span>
                           {track.title}
                           {track.artists && (
-                            <span className="text-sm text-muted-foreground ml-2">
-                              by {track.artists.map((a) => a.name).join(", ")}
+                            <span className="ml-2 text-sm text-muted-foreground">
+                              by {track.artists.map((a) => a.name).join(', ')}
                             </span>
                           )}
                         </div>
                         {track.duration && (
-                          <span className="text-muted-foreground">
-                            {track.duration}
-                          </span>
+                          <span className="text-muted-foreground">{track.duration}</span>
                         )}
                       </div>
                     ))}
@@ -224,14 +220,12 @@ const ReleasePage: NextPage<ReleasePageProps> = async ({ params }) => {
 
               {release.identifiers && release.identifiers.length > 0 && (
                 <div className="mb-6">
-                  <h2 className="text-xl font-semibold mb-2">Identifiers</h2>
+                  <h2 className="mb-2 text-xl font-semibold">Identifiers</h2>
                   <div className="grid gap-2">
                     {release.identifiers.map((id, index) => (
                       <div key={index}>
-                        <span className="font-medium">{id.type}:</span>{" "}
-                        <span className="text-muted-foreground">
-                          {id.value}
-                        </span>
+                        <span className="font-medium">{id.type}:</span>{' '}
+                        <span className="text-muted-foreground">{id.value}</span>
                       </div>
                     ))}
                   </div>
@@ -240,7 +234,7 @@ const ReleasePage: NextPage<ReleasePageProps> = async ({ params }) => {
 
               {release.videos && release.videos.length > 0 && (
                 <div className="mb-6">
-                  <h2 className="text-xl font-semibold mb-2">Videos</h2>
+                  <h2 className="mb-2 text-xl font-semibold">Videos</h2>
                   <div className="grid gap-4">
                     {release.videos.map((video, index) => (
                       <a
@@ -271,22 +265,19 @@ const ReleasePage: NextPage<ReleasePageProps> = async ({ params }) => {
           </div>
         </Card>
       </div>
-    );
+    )
   } catch (error) {
-    console.error("Error fetching release:", error);
+    console.error('Error fetching release:', error)
     return (
       <div className="container mx-auto p-4">
-        <h1 className="text-2xl font-bold mb-4">Error</h1>
-        <p>
-          There was an error fetching the release information. Please try again
-          later.
-        </p>
+        <h1 className="mb-4 text-2xl font-bold">Error</h1>
+        <p>There was an error fetching the release information. Please try again later.</p>
         <Link href="/discogs" className="text-blue-600 hover:underline">
           Back to search
         </Link>
       </div>
-    );
+    )
   }
-};
+}
 
-export default ReleasePage;
+export default ReleasePage
