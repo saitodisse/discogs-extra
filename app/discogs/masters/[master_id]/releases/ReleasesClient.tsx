@@ -105,10 +105,10 @@ export function ReleasesClient({
       </div>
 
       {view === 'grid' ? (
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-3">
+        <div className="grid grid-cols-4 gap-6 sm:grid-cols-6 md:grid-cols-6">
           {releases.versions.map((release: MasterVersionsResponse['versions'][0]) => (
             <Card key={release.id} className="flex flex-col items-center p-4">
-              {release.thumb ? (
+              {release.thumb && release.thumb.length > 0 ? (
                 <div className="mb-2 aspect-square w-full overflow-hidden rounded-md bg-muted">
                   <Image
                     src={release.thumb}
@@ -147,13 +147,14 @@ export function ReleasesClient({
               <div className="mb-1 text-xs">{release.catno || '-'}</div>
               <div className="flex flex-wrap gap-1">
                 {release.format
-                  ? (Array.isArray(release.format) ? release.format : [release.format]).map(
-                      (format: string, index: number) => (
-                        <Badge key={index} variant="secondary">
-                          {format}
-                        </Badge>
-                      )
-                    )
+                  ? (Array.isArray(release.format)
+                      ? release.format
+                      : release.format.split(',')
+                    ).map((format: string, index: number) => (
+                      <Badge key={index} variant="secondary">
+                        {format.trim()}
+                      </Badge>
+                    ))
                   : '-'}
               </div>
             </Card>
@@ -177,13 +178,19 @@ export function ReleasesClient({
               {releases.versions.map((release: MasterVersionsResponse['versions'][0]) => (
                 <TableRow key={release.id}>
                   <TableCell className="w-[100px]">
-                    <Image
-                      src={release.thumb}
-                      alt={release.title}
-                      width={64}
-                      height={64}
-                      className="rounded-md object-cover"
-                    />
+                    {release.thumb && release.thumb.length > 0 ? (
+                      <Image
+                        src={release.thumb}
+                        alt={release.title}
+                        width={64}
+                        height={64}
+                        className="rounded-md object-cover"
+                      />
+                    ) : (
+                      <div className="flex h-full w-full items-center justify-center text-muted-foreground">
+                        No Image
+                      </div>
+                    )}
                   </TableCell>
                   <TableCell>
                     <Link
@@ -212,14 +219,15 @@ export function ReleasesClient({
                   <TableCell>{release.catno || '-'}</TableCell>
                   <TableCell>
                     {release.format ? (
-                      <div className="flex flex-wrap gap-1">
-                        {(Array.isArray(release.format) ? release.format : [release.format]).map(
-                          (format: string, index: number) => (
-                            <Badge key={index} variant="secondary">
-                              {format}
-                            </Badge>
-                          )
-                        )}
+                      <div className="flex flex-wrap gap-2">
+                        {(Array.isArray(release.format)
+                          ? release.format
+                          : release.format.split(', ')
+                        ).map((format: string, index: number) => (
+                          <Badge key={index} variant="secondary">
+                            {format}
+                          </Badge>
+                        ))}
                       </div>
                     ) : (
                       '-'
