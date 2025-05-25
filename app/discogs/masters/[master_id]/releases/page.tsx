@@ -3,8 +3,8 @@ import { ReleasesClient } from './ReleasesClient'
 import 'server-only'
 
 interface PageProps {
-  params: { master_id: string }
-  searchParams: { [key: string]: string }
+  params: Promise<{ master_id: string }>
+  searchParams: Promise<{ [key: string]: string }>
 }
 
 async function getDiscogsData(masterId: string, page: number) {
@@ -36,9 +36,10 @@ async function getDiscogsData(masterId: string, page: number) {
 }
 
 export default async function ReleasesPage({ params, searchParams }: PageProps) {
-  const masterId = params.master_id
-  const page = searchParams.page ? parseInt(searchParams.page) : 1
-  const view = searchParams.view === 'grid' ? 'grid' : 'list'
+  const { master_id: masterId } = await params
+  const { page: pageStr, view: viewParam } = await searchParams
+  const page = pageStr ? parseInt(pageStr) : 1
+  const view = viewParam === 'grid' ? 'grid' : 'list'
   const { master, releases, error } = await getDiscogsData(masterId, page)
 
   console.log('Master data:', master)
