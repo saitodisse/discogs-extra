@@ -58,7 +58,7 @@ export default async function ReleasesPage({ params, searchParams }: PageProps) 
   return (
     <ReleasesClient
       masterId={masterId}
-      master={master}
+      master={master!}
       releases={releases ?? undefined}
       error={error}
       initialView={view}
