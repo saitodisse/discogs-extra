@@ -13,8 +13,8 @@ interface ReleaseWithThumb extends Omit<Release, 'thumb' | 'format' | 'label'> {
   year?: number
 }
 
-export default async function ArtistPage({ params }: { params: { artist_id: string } }) {
-  const artistId = params.artist_id
+export default async function ArtistPage({ params }: { params: Promise<{ artist_id: string }> }) {
+  const { artist_id } = await params
 
   if (!process.env.DISCOGS_CONSUMER_KEY || !process.env.DISCOGS_CONSUMER_SECRET) {
     console.error('Missing required Discogs API credentials')
@@ -34,10 +34,10 @@ export default async function ArtistPage({ params }: { params: { artist_id: stri
     })
 
     // Get artist details
-    const artist = await client.database().getArtist(artistId)
+    const artist = await client.database().getArtist(artist_id)
 
     // Get artist's releases
-    const releasesResponse = await client.database().getArtistReleases(artistId, {
+    const releasesResponse = await client.database().getArtistReleases(artist_id, {
       per_page: 50,
       sort: 'year',
       sort_order: 'desc',
@@ -109,7 +109,7 @@ export default async function ArtistPage({ params }: { params: { artist_id: stri
           {releases.map((release) => (
             <Link
               key={release.id}
-              href={`/discogs/artists/${artistId}/${release.id}`}
+              href={`/discogs/artists/${artist_id}/${release.id}`}
               className="block"
             >
               <Card className="h-full transition-colors hover:bg-accent/50">

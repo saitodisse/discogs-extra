@@ -5,12 +5,6 @@ import { Card } from '@/components/ui/card'
 import Link from 'next/link'
 import { ExternalLink } from 'lucide-react'
 
-interface MasterPageProps {
-  params: {
-    master_id: string
-  }
-}
-
 interface Master {
   id: number
   title: string
@@ -42,7 +36,8 @@ interface Master {
   notes?: string
 }
 
-const MasterPage: NextPage<MasterPageProps> = async ({ params }) => {
+export default async function MasterPage({ params }: { params: Promise<{ master_id: string }> }) {
+  const { master_id } = await params
   if (!process.env.DISCOGS_CONSUMER_KEY || !process.env.DISCOGS_CONSUMER_SECRET) {
     return (
       <div className="container mx-auto p-4">
@@ -59,7 +54,7 @@ const MasterPage: NextPage<MasterPageProps> = async ({ params }) => {
   })
 
   try {
-    const master = await client.database().getMaster(parseInt(params.master_id))
+    const master = await client.database().getMaster(parseInt(master_id))
 
     console.log('Master data:', master)
 
@@ -85,21 +80,6 @@ const MasterPage: NextPage<MasterPageProps> = async ({ params }) => {
             {/* Album Info */}
             <div>
               <h1 className="mb-2 text-3xl font-bold">{master.title}</h1>
-
-              {master.uri && (
-                <div className="mb-4 font-thin">
-                  <a
-                    href={master.uri}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-sm text-primary underline"
-                  >
-                    discogs
-                    <ExternalLink className="ml-1 inline" size={14} />
-                  </a>
-                </div>
-              )}
-
               <div className="mb-4">
                 {master.artists &&
                   master.artists.map((artist, index) => (
@@ -112,6 +92,26 @@ const MasterPage: NextPage<MasterPageProps> = async ({ params }) => {
                       {index < master.artists.length - 1 ? ', ' : ''}
                     </Link>
                   ))}
+              </div>
+
+              <div className="mb-6 flex items-center gap-4 font-thin">
+                {master.uri && (
+                  <a
+                    href={master.uri}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-sm text-primary underline"
+                  >
+                    discogs
+                    <ExternalLink className="ml-1 inline" size={14} />
+                  </a>
+                )}
+                <Link
+                  href={`/discogs/masters/${master_id}/releases`}
+                  className="text-sm text-primary underline"
+                >
+                  view all releases
+                </Link>
               </div>
 
               {master.year && (
@@ -214,5 +214,3 @@ const MasterPage: NextPage<MasterPageProps> = async ({ params }) => {
     )
   }
 }
-
-export default MasterPage

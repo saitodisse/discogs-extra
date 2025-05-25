@@ -5,10 +5,14 @@ import { Card } from '@/components/ui/card'
 import Link from 'next/link'
 import { ExternalLink } from 'lucide-react'
 
-interface ReleasePageProps {
-  params: {
-    release_id: string
-  }
+interface Artist {
+  name: string
+  id: number
+  anv?: string
+  join?: string
+  role?: string
+  tracks?: string
+  resource_url?: string
 }
 
 interface Release {
@@ -17,6 +21,11 @@ interface Release {
   artists: Array<{
     name: string
     id: number
+    anv?: string
+    join?: string
+    role?: string
+    tracks?: string
+    resource_url?: string
   }>
   labels: Array<{
     name: string
@@ -43,14 +52,13 @@ interface Release {
     description: string
   }>
   notes?: string
+  extraartists?: Artist[]
   tracklist: Array<{
     position: string
     title: string
     duration: string
-    artists?: Array<{
-      name: string
-      id: number
-    }>
+    artists?: Artist[]
+    extraartists?: Artist[]
   }>
   uri: string
   identifiers?: Array<{
@@ -59,7 +67,8 @@ interface Release {
   }>
 }
 
-const ReleasePage: NextPage<ReleasePageProps> = async ({ params }) => {
+export default async function ReleasePage({ params }: { params: Promise<{ release_id: string }> }) {
+  const { release_id } = await params
   if (!process.env.DISCOGS_CONSUMER_KEY || !process.env.DISCOGS_CONSUMER_SECRET) {
     return (
       <div className="container mx-auto p-4">
@@ -76,7 +85,7 @@ const ReleasePage: NextPage<ReleasePageProps> = async ({ params }) => {
   })
 
   try {
-    const release = await client.database().getRelease(parseInt(params.release_id))
+    const release = await client.database().getRelease(parseInt(release_id))
 
     console.log('Release data:', release)
 
@@ -194,26 +203,132 @@ const ReleasePage: NextPage<ReleasePageProps> = async ({ params }) => {
                 </div>
               )}
 
+              {/* Credits Section */}
+              {release.extraartists && release.extraartists.length > 0 && (
+                <div className="mb-6">
+                  <h2 className="mb-2 text-xl font-semibold">Credits</h2>
+                  <div className="grid gap-2">
+                    {release.extraartists.map((artist, index) => (
+                      <div key={index} className="flex items-baseline">
+                        <span className="min-w-[120px] font-medium">{artist.role}:</span>
+                        <Link
+                          href={`/discogs/artists/${artist.id}`}
+                          className="text-blue-600 hover:underline"
+                        >
+                          {artist.name}
+                        </Link>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Enhanced Tracklist */}
               {release.tracklist && release.tracklist.length > 0 && (
                 <div className="mb-6">
                   <h2 className="mb-2 text-xl font-semibold">Tracklist</h2>
-                  <div className="grid gap-2">
+                  <div className="grid gap-4">
                     {release.tracklist.map((track, index) => (
-                      <div key={index} className="flex justify-between">
-                        <div>
-                          <span className="mr-2 text-muted-foreground">{track.position}.</span>
-                          {track.title}
-                          {track.artists && (
-                            <span className="ml-2 text-sm text-muted-foreground">
-                              by {track.artists.map((a) => a.name).join(', ')}
-                            </span>
+                      <div key={index} className="space-y-2">
+                        <div className="flex justify-between">
+                          <div>
+                            <span className="mr-2 text-muted-foreground">{track.position}.</span>
+                            {track.title}
+                          </div>
+                          {track.duration && (
+                            <span className="text-muted-foreground">{track.duration}</span>
                           )}
                         </div>
-                        {track.duration && (
-                          <span className="text-muted-foreground">{track.duration}</span>
+                        {track.extraartists && track.extraartists.length > 0 && (
+                          <div className="ml-6 space-y-1 text-sm">
+                            {track.extraartists.map((artist, artistIndex) => (
+                              <div key={artistIndex} className="text-muted-foreground">
+                                {artist.role}:{' '}
+                                <Link
+                                  href={`/discogs/artists/${artist.id}`}
+                                  className="text-blue-600 hover:underline"
+                                >
+                                  {artist.name}
+                                </Link>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                        {track.artists && track.artists.length > 0 && (
+                          <div className="ml-6 space-y-1 text-sm">
+                            {track.artists.map((artist, artistIndex) => {
+                              return (
+                                <div key={artistIndex} className="text-muted-foreground">
+                                  <a
+                                    href={`/discogs/artists/${artist.id}`}
+                                    className="text-blue-600 hover:underline"
+                                  >
+                                    {artist.name}
+                                    {artist.anv && ` (as ${artist.anv})`}
+                                    {artist.role && ` (${artist.role})`}
+                                    {artist.tracks && ` (tracks: ${artist.tracks})`}
+                                  </a>
+                                </div>
+                              )
+                            })}
+                          </div>
                         )}
                       </div>
                     ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Additional Artists Section */}
+              {release.artists && release.artists.length > 1 && (
+                <div className="mb-6">
+                  <h2 className="mb-2 text-xl font-semibold">Artists</h2>
+                  <div className="grid gap-2">
+                    {release.artists &&
+                      release.artists.map((artist, index) => {
+                        let joinString = ''
+                        if (artist.join) {
+                          joinString = ` (${artist.join})`
+                        }
+                        if (artist.role) {
+                          joinString = ` (${artist.role})`
+                        }
+                        if (artist.tracks) {
+                          joinString = ` (tracks: ${artist.tracks})`
+                        }
+                        if (artist.anv) {
+                          joinString = ` (as ${artist.anv})`
+                        }
+                        if (artist.resource_url) {
+                          joinString = ` (resource: ${artist.resource_url})`
+                        }
+                        if (artist.id === 0) {
+                          return (
+                            <div key={index} className="flex items-baseline">
+                              <Link
+                                href={`/discogs/artists/${artist.id}`}
+                                className="text-blue-600 hover:underline"
+                              >
+                                {artist.name}
+                              </Link>
+                              {artist.anv && (
+                                <span className="ml-2 text-sm text-muted-foreground">
+                                  (as {artist.anv})
+                                </span>
+                              )}
+                              {artist.join &&
+                                index < ((release.artists && release.artists?.length - 1) || 0) && (
+                                  <span className="mx-2 text-muted-foreground">{artist.join}</span>
+                                )}
+                              {artist.tracks && (
+                                <span className="ml-2 text-sm text-muted-foreground">
+                                  tracks: {artist.tracks}
+                                </span>
+                              )}
+                            </div>
+                          )
+                        }
+                      })}
                   </div>
                 </div>
               )}
@@ -250,17 +365,6 @@ const ReleasePage: NextPage<ReleasePageProps> = async ({ params }) => {
                   </div>
                 </div>
               )}
-
-              <div className="mt-4">
-                <a
-                  href={release.uri}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-blue-600 hover:underline"
-                >
-                  View on Discogs
-                </a>
-              </div>
             </div>
           </div>
         </Card>
@@ -279,5 +383,3 @@ const ReleasePage: NextPage<ReleasePageProps> = async ({ params }) => {
     )
   }
 }
-
-export default ReleasePage

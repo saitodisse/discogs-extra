@@ -5,16 +5,6 @@ import { Client } from 'disconnect'
 import { NextPage } from 'next'
 import Link from 'next/link'
 
-interface SearchParams {
-  params: {
-    query: string
-  }
-  searchParams: {
-    page?: string
-    type?: 'release' | 'master' | 'artist' | 'label'
-  }
-}
-
 interface SearchResult {
   id: number
   title: string
@@ -28,10 +18,19 @@ interface SearchResult {
   style?: string[]
 }
 
-const SearchPage: NextPage<SearchParams> = async ({ params, searchParams }) => {
-  const { query } = params
-  const page = parseInt(searchParams.page || '1')
-  const type = searchParams.type || 'release'
+export default async function SearchPage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ query: string }>
+  searchParams: Promise<{
+    page?: string
+    type?: 'release' | 'master' | 'artist' | 'label'
+  }>
+}) {
+  const { query } = await params
+  const { page: pageStr = '1', type = 'release' } = await searchParams
+  const page = parseInt(pageStr)
   const perPage = 24
 
   if (!process.env.DISCOGS_CONSUMER_KEY || !process.env.DISCOGS_CONSUMER_SECRET) {
@@ -167,5 +166,3 @@ const SearchPage: NextPage<SearchParams> = async ({ params, searchParams }) => {
     return `/discogs/releases/${item.id}`
   }
 }
-
-export default SearchPage

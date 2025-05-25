@@ -4,12 +4,6 @@ import { Badge } from '@/components/ui/badge'
 import { Card } from '@/components/ui/card'
 import Link from 'next/link'
 
-interface LabelPageProps {
-  params: {
-    label_id: string
-  }
-}
-
 interface Label {
   id: number
   name: string
@@ -25,7 +19,8 @@ interface Label {
   urls?: string[]
 }
 
-const LabelPage: NextPage<LabelPageProps> = async ({ params }) => {
+export default async function LabelPage({ params }: { params: Promise<{ label_id: string }> }) {
+  const { label_id } = await params
   if (!process.env.DISCOGS_CONSUMER_KEY || !process.env.DISCOGS_CONSUMER_SECRET) {
     return (
       <div className="container mx-auto p-4">
@@ -42,7 +37,7 @@ const LabelPage: NextPage<LabelPageProps> = async ({ params }) => {
   })
 
   try {
-    const label = await client.database().getLabel(parseInt(params.label_id))
+    const label = await client.database().getLabel(parseInt(label_id))
 
     return (
       <div className="container mx-auto p-4">
@@ -128,5 +123,3 @@ const LabelPage: NextPage<LabelPageProps> = async ({ params }) => {
     )
   }
 }
-
-export default LabelPage
