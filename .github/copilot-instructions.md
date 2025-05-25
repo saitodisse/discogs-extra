@@ -6,3 +6,5 @@
 - When adding shadcn components, use `pnpm dlx shadcn@latest add <component-name>`
 - Always check for new documentation when using external libraries: use context7;
 - do not run `pnpm dev`, its is already running on localhost:3000
+- Always try to use nuqs for control page state
+- automatically clean up the file and remove the duplicate code
