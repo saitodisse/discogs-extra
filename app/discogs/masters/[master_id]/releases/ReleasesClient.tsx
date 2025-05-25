@@ -1,8 +1,6 @@
 'use client'
 
 import { useQueryState, parseAsInteger } from 'nuqs'
-import { useState } from 'react'
-import { Button } from '@/components/ui/button'
 import { Toggle } from '@/components/ui/toggle'
 import { GridIcon, ListIcon } from 'lucide-react'
 import {
@@ -17,35 +15,21 @@ import { Badge } from '@/components/ui/badge'
 import { Card } from '@/components/ui/card'
 import Image from 'next/image'
 import Link from 'next/link'
-import { MasterVersionsResponse } from 'disconnect'
+import type { MasterVersionsResponse } from 'disconnect'
+import type { BadgeProps } from '@/components/ui/badge' // Assuming BadgeProps are available or define variants manually
 
-interface DiscogsVersion {
-  id: number
+// Define a more specific type for the master object
+interface MasterInfo {
   title: string
-  major_formats: string[]
-  format: string[]
-  label: string[] | Array<{ name: string }>
-  released: string
-  status: string
-  thumb: string
-  country: string
-  year?: number
-  catno?: string
+  // Add other properties of master if known and used
 }
 
-interface DiscogsResponse {
-  pagination: {
-    page: number
-    pages: number
-    items: number
-    per_page: number
-  }
-  versions: DiscogsVersion[]
-}
+// Alias for the release version type for brevity
+type ReleaseVersion = MasterVersionsResponse['versions'][0]
 
 interface ReleasesClientProps {
   masterId: string
-  master: any
+  master: MasterInfo
   releases?: MasterVersionsResponse
   error?: string | null
   initialView?: 'list' | 'grid'
@@ -53,8 +37,158 @@ interface ReleasesClientProps {
 }
 
 // Remove duplicate implementation and export only once
-
 // Remove all duplicate/old code and keep only the correct implementation below
+
+// --- Helper Components ---
+
+const NoImagePlaceholder = ({ className }: { className?: string }) => (
+  <div className={className || 'flex h-full w-full items-center justify-center text-muted-foreground'}>
+    No Image
+  </div>
+)
+
+type LabelElementType = string | { name: string; [key: string]: any }
+
+interface DisplayLabelsProps {
+  labelValue?: LabelElementType[]
+  className?: string
+  badgeVariant?: BadgeProps['variant']
+}
+
+const DisplayLabels: React.FC<DisplayLabelsProps> = ({
+  labelValue,
+  className = 'mb-1 flex flex-wrap gap-1',
+  badgeVariant = 'outline',
+}) => {
+  if (!labelValue || !Array.isArray(labelValue) || labelValue.length === 0) {
+    return <>-</>
+  }
+
+  const labelNames = labelValue
+    .map((label) => (typeof label === 'string' ? label : label?.name))
+    .filter((name): name is string => Boolean(name))
+
+  if (labelNames.length === 0) {
+    return <>-</>
+  }
+
+  return (
+    <div className={className}>
+      {labelNames.map((name, index) => (
+        <Badge key={index} variant={badgeVariant}>
+          {name}
+        </Badge>
+      ))}
+    </div>
+  )
+}
+
+interface DisplayFormatsProps {
+  formatValue?: string | string[]
+  className?: string
+  badgeVariant?: BadgeProps['variant']
+}
+
+const DisplayFormats: React.FC<DisplayFormatsProps> = ({
+  formatValue,
+  className = 'flex flex-wrap gap-1',
+  badgeVariant = 'secondary',
+}) => {
+  if (!formatValue) return <>-</>
+
+  let formatsArray: string[]
+  if (Array.isArray(formatValue)) {
+    formatsArray = formatValue.map((f) => f.trim()).filter((f) => f)
+  } else {
+    formatsArray = formatValue.split(/,\s*/).map((f) => f.trim()).filter((f) => f)
+  }
+
+  if (formatsArray.length === 0) return <>-</>
+
+  return (
+    <div className={className}>
+      {formatsArray.map((format, index) => (
+        <Badge key={index} variant={badgeVariant}>
+          {format}
+        </Badge>
+      ))}
+    </div>
+  )
+}
+
+interface ReleaseGridItemProps {
+  release: ReleaseVersion
+}
+
+const ReleaseGridItem: React.FC<ReleaseGridItemProps> = ({ release }) => (
+  <Card key={release.id} className="flex flex-col items-center p-4">
+    {release.thumb && release.thumb.length > 0 ? (
+      <div className="mb-2 aspect-square w-full overflow-hidden rounded-md bg-muted">
+        <Image
+          src={release.thumb}
+          alt={release.title}
+          width={96}
+          height={96}
+          className="mb-2 rounded-md object-cover" // mb-2 here might be redundant if parent has it
+        />
+      </div>
+    ) : (
+      <div className="mb-2 aspect-square w-full overflow-hidden rounded-md bg-muted">
+        <NoImagePlaceholder />
+      </div>
+    )}
+    <div className="mb-1 text-center font-semibold">
+      <Link href={`/discogs/releases/${release.id}`} className="text-blue-600 hover:underline">
+        {release.title}
+      </Link>
+    </div>
+    <div className="mb-1 text-xs text-gray-500">{release.released || '-'}</div>
+    <div className="mb-1 text-xs text-gray-500">{release.country || '-'}</div>
+    <DisplayLabels labelValue={Array.isArray(release.label) ? release.label : [release.label]} />
+    <div className="mb-1 text-xs">{release.catno || '-'}</div>
+    <DisplayFormats formatValue={release.format} />
+  </Card>
+)
+
+interface ReleaseListItemProps {
+  release: ReleaseVersion
+}
+
+const ReleaseListItem: React.FC<ReleaseListItemProps> = ({ release }) => (
+  <TableRow key={release.id}>
+    <TableCell className="w-[100px]">
+      {release.thumb && release.thumb.length > 0 ? (
+        <Image
+          src={release.thumb}
+          alt={release.title}
+          width={64}
+          height={64}
+          className="rounded-md object-cover"
+        />
+      ) : (
+        <div className="flex h-[64px] w-[64px] items-center justify-center rounded-md bg-muted text-muted-foreground">
+          <NoImagePlaceholder />
+        </div>
+      )}
+    </TableCell>
+    <TableCell>
+      <Link href={`/discogs/releases/${release.id}`} className="text-blue-600 hover:underline">
+        {release.title}
+      </Link>
+    </TableCell>
+    <TableCell>{release.released || '-'}</TableCell>
+    <TableCell>{release.country || '-'}</TableCell>
+    <TableCell>
+      <DisplayLabels labelValue={Array.isArray(release.label) ? release.label : [release.label]} />
+    </TableCell>
+    <TableCell>{release.catno || '-'}</TableCell>
+    <TableCell>
+      <DisplayFormats formatValue={release.format} className="flex flex-wrap gap-2" />
+    </TableCell>
+  </TableRow>
+)
+
+// --- Main Component ---
 
 export function ReleasesClient({
   masterId,
@@ -106,58 +240,8 @@ export function ReleasesClient({
 
       {view === 'grid' ? (
         <div className="grid grid-cols-4 gap-6 sm:grid-cols-6 md:grid-cols-6">
-          {releases.versions.map((release: MasterVersionsResponse['versions'][0]) => (
-            <Card key={release.id} className="flex flex-col items-center p-4">
-              {release.thumb && release.thumb.length > 0 ? (
-                <div className="mb-2 aspect-square w-full overflow-hidden rounded-md bg-muted">
-                  <Image
-                    src={release.thumb}
-                    alt={release.title}
-                    width={96}
-                    height={96}
-                    className="mb-2 rounded-md object-cover"
-                  />
-                </div>
-              ) : (
-                <div className="mb-2 aspect-square w-full overflow-hidden rounded-md bg-muted">
-                  <div className="flex h-full w-full items-center justify-center text-muted-foreground">
-                    No Image
-                  </div>
-                </div>
-              )}
-              <div className="mb-1 text-center font-semibold">
-                <Link
-                  href={`/discogs/releases/${release.id}`}
-                  className="text-blue-600 hover:underline"
-                >
-                  {release.title}
-                </Link>
-              </div>
-              <div className="mb-1 text-xs text-gray-500">{release.released || '-'}</div>
-              <div className="mb-1 text-xs text-gray-500">{release.country || '-'}</div>
-              <div className="mb-1 flex flex-wrap gap-1">
-                {release.label && Array.isArray(release.label)
-                  ? release.label.map((label: any, index: number) => (
-                      <Badge key={index} variant="outline">
-                        {typeof label === 'string' ? label : label.name || ''}
-                      </Badge>
-                    ))
-                  : '-'}
-              </div>
-              <div className="mb-1 text-xs">{release.catno || '-'}</div>
-              <div className="flex flex-wrap gap-1">
-                {release.format
-                  ? (Array.isArray(release.format)
-                      ? release.format
-                      : release.format.split(',')
-                    ).map((format: string, index: number) => (
-                      <Badge key={index} variant="secondary">
-                        {format.trim()}
-                      </Badge>
-                    ))
-                  : '-'}
-              </div>
-            </Card>
+          {releases.versions.map((release: ReleaseVersion) => (
+            <ReleaseGridItem key={release.id} release={release} />
           ))}
         </div>
       ) : (
@@ -175,65 +259,8 @@ export function ReleasesClient({
               </TableRow>
             </TableHeader>
             <TableBody>
-              {releases.versions.map((release: MasterVersionsResponse['versions'][0]) => (
-                <TableRow key={release.id}>
-                  <TableCell className="w-[100px]">
-                    {release.thumb && release.thumb.length > 0 ? (
-                      <Image
-                        src={release.thumb}
-                        alt={release.title}
-                        width={64}
-                        height={64}
-                        className="rounded-md object-cover"
-                      />
-                    ) : (
-                      <div className="flex h-full w-full items-center justify-center text-muted-foreground">
-                        No Image
-                      </div>
-                    )}
-                  </TableCell>
-                  <TableCell>
-                    <Link
-                      href={`/discogs/releases/${release.id}`}
-                      className="text-blue-600 hover:underline"
-                    >
-                      {release.title}
-                    </Link>
-                  </TableCell>
-                  <TableCell>{release.released || '-'}</TableCell>
-                  <TableCell>{release.country || '-'}</TableCell>
-                  <TableCell>
-                    {release.label ? (
-                      <div className="flex flex-wrap gap-1">
-                        {Array.isArray(release.label) &&
-                          release.label.map((label: any, index: number) => (
-                            <Badge key={index} variant="outline">
-                              {typeof label === 'string' ? label : label.name || ''}
-                            </Badge>
-                          ))}
-                      </div>
-                    ) : (
-                      '-'
-                    )}
-                  </TableCell>
-                  <TableCell>{release.catno || '-'}</TableCell>
-                  <TableCell>
-                    {release.format ? (
-                      <div className="flex flex-wrap gap-2">
-                        {(Array.isArray(release.format)
-                          ? release.format
-                          : release.format.split(', ')
-                        ).map((format: string, index: number) => (
-                          <Badge key={index} variant="secondary">
-                            {format}
-                          </Badge>
-                        ))}
-                      </div>
-                    ) : (
-                      '-'
-                    )}
-                  </TableCell>
-                </TableRow>
+              {releases.versions.map((release: ReleaseVersion) => (
+                <ReleaseListItem key={release.id} release={release} />
               ))}
             </TableBody>
           </Table>
