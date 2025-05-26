@@ -1,6 +1,13 @@
 import { Client } from 'disconnect'
 import { ReleasesClient } from './ReleasesClient'
 import 'server-only'
+import {
+  Breadcrumb,
+  BreadcrumbList,
+  BreadcrumbItem,
+  BreadcrumbLink,
+  BreadcrumbSeparator,
+} from '@/components/ui/breadcrumb'
 
 interface PageProps {
   params: Promise<{ master_id: string }>
@@ -57,13 +64,36 @@ export default async function ReleasesPage({ params, searchParams }: PageProps) 
   }
 
   return (
-    <ReleasesClient
-      masterId={masterId}
-      master={master!}
-      releases={releases ?? undefined}
-      error={error}
-      initialView={view}
-      initialPage={page}
-    />
+    <>
+      <Breadcrumb className="ml-4 mt-4">
+        <BreadcrumbList>
+          <BreadcrumbItem>
+            <BreadcrumbLink href="/discogs">discogs</BreadcrumbLink>
+          </BreadcrumbItem>
+          <BreadcrumbSeparator />
+          <BreadcrumbItem>
+            <BreadcrumbLink href={`/discogs/masters/${master?.id}`}>
+              Master: {master?.artists?.[0]?.name} - {master?.title}
+              <span className="font-mono"> ({master?.id})</span>
+            </BreadcrumbLink>
+          </BreadcrumbItem>
+          <BreadcrumbSeparator />
+          <BreadcrumbItem>
+            <BreadcrumbLink href={`/discogs/masters/${master?.id}/releases`}>
+              All Releases
+            </BreadcrumbLink>
+          </BreadcrumbItem>
+        </BreadcrumbList>
+      </Breadcrumb>
+
+      <ReleasesClient
+        masterId={masterId}
+        master={master!}
+        releases={releases ?? undefined}
+        error={error}
+        initialView={view}
+        initialPage={page}
+      />
+    </>
   )
 }

@@ -5,6 +5,14 @@ import Image from 'next/image'
 import Link from 'next/link'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { ExternalLink } from 'lucide-react'
+import {
+  Breadcrumb,
+  BreadcrumbList,
+  BreadcrumbItem,
+  BreadcrumbLink,
+  BreadcrumbSeparator,
+} from '@/components/ui/breadcrumb'
+import { release } from 'os'
 
 interface ReleaseWithThumb extends Omit<Release, 'thumb' | 'format' | 'label'> {
   thumb?: string
@@ -46,7 +54,22 @@ export default async function ArtistPage({ params }: { params: Promise<{ artist_
     const releases = (releasesResponse.results || []) as ReleaseWithThumb[]
 
     return (
-      <div className="container mx-auto p-4">
+      <div className="container mx-auto px-4">
+        <Breadcrumb className="my-4">
+          <BreadcrumbList>
+            <BreadcrumbItem>
+              <BreadcrumbLink href="/discogs">discogs</BreadcrumbLink>
+            </BreadcrumbItem>
+            <BreadcrumbSeparator />
+            <BreadcrumbItem>
+              <BreadcrumbLink href={`/discogs/artists/${artist?.id}`}>
+                Artist: {artist?.name}
+                <span className="font-mono"> ({artist?.id})</span>
+              </BreadcrumbLink>
+            </BreadcrumbItem>
+          </BreadcrumbList>
+        </Breadcrumb>
+
         <div className="mb-8 flex flex-col gap-8 md:flex-row">
           {artist.images && artist.images.length > 0 && (
             <div className="w-full md:w-1/3 lg:w-1/4">

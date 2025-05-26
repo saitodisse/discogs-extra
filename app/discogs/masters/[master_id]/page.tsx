@@ -4,6 +4,14 @@ import { Badge } from '@/components/ui/badge'
 import { Card } from '@/components/ui/card'
 import Link from 'next/link'
 import { ExternalLink } from 'lucide-react'
+import {
+  Breadcrumb,
+  BreadcrumbItem,
+  BreadcrumbLink,
+  BreadcrumbList,
+  BreadcrumbPage,
+  BreadcrumbSeparator,
+} from '@/components/ui/breadcrumb'
 
 interface Master {
   id: number
@@ -60,6 +68,21 @@ export default async function MasterPage({ params }: { params: Promise<{ master_
 
     return (
       <div className="container mx-auto p-4">
+        <BreadcrumbDiscogs
+          entity={{
+            type: 'master',
+            data: master
+          }}
+        />
+
+        <h1 className="mb-2 mt-6 text-lg">
+          <span className="font-thin">Master: </span>
+          <span className="mr-6 font-mono font-thin">{master?.id}</span>
+          <span className="font-semibold">
+            {master?.artists?.[0]?.name} - {master?.title}
+          </span>
+        </h1>
+
         <Card className="w-full">
           <div className="grid gap-6 p-6 md:grid-cols-[300px_1fr]">
             {/* Album Cover */}
