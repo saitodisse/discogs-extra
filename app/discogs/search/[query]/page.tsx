@@ -4,6 +4,7 @@ import { Input } from '@/components/ui/input'
 import { Client } from 'disconnect'
 import { NextPage } from 'next'
 import Link from 'next/link'
+import { ReleaseItem } from '@/components/ReleaseItem'
 
 interface SearchResult {
   id: number
@@ -97,35 +98,20 @@ export default async function SearchPage({
         Search Results for "{decodeURIComponent(query)}" ({pagination.items} items)
       </h1>
 
-      <div className="grid grid-cols-1 gap-6 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8">
+      <div className="grid grid-cols-1 gap-6 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6">
         {searchResults.map((item) => (
-          <Link
+          <ReleaseItem
             key={`${item.type}-${item.id}`}
-            href={getUrl(item)}
-            className="block overflow-hidden rounded-lg bg-card text-card-foreground shadow-md transition-shadow hover:shadow-lg"
-          >
-            {' '}
-            <div className="relative aspect-square bg-muted">
-              {item.thumb || item.cover_image ? (
-                <img
-                  src={item.thumb || item.cover_image}
-                  alt={item.title}
-                  className="h-full w-full object-cover"
-                  loading="lazy"
-                />
-              ) : (
-                <div className="flex h-full w-full items-center justify-center text-muted-foreground">
-                  No Image
-                </div>
-              )}
-            </div>
-            <div className="p-4">
-              <h2 className="mb-1 line-clamp-2 text-xs">{item.title}</h2>
-              <div className="text-sm text-muted-foreground">
-                {item.year && <Badge>{item.year}</Badge>}
-              </div>
-            </div>
-          </Link>
+            id={item.id}
+            title={item.title}
+            type={item.type}
+            thumb={item.thumb}
+            cover_image={item.cover_image}
+            year={item.year}
+            format={item.format}
+            label={item.label}
+            compact
+          />
         ))}
       </div>
 

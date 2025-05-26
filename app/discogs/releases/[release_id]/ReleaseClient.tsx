@@ -5,68 +5,7 @@ import Link from 'next/link'
 import { Card } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { ExternalLink } from 'lucide-react'
-
-interface Artist {
-  name: string
-  id: number
-  anv?: string
-  join?: string
-  role?: string
-  tracks?: string
-  resource_url?: string
-}
-
-interface Label {
-  name: string
-  id: number
-  catno: string
-}
-
-interface Format {
-  name: string
-  qty: number
-  descriptions?: string[]
-}
-
-interface Video {
-  uri: string
-  title: string
-  description?: string
-}
-
-interface Track {
-  position: string
-  title: string
-  duration: string
-  artists?: Artist[]
-  extraartists?: Artist[]
-}
-
-interface Release {
-  id: number
-  title: string
-  artists: Artist[]
-  labels: Label[]
-  year?: number
-  country?: string
-  genres?: string[]
-  styles?: string[]
-  formats?: Format[]
-  images?: Array<{
-    uri: string
-    height: number
-    width: number
-  }>
-  videos?: Video[]
-  notes?: string
-  extraartists?: Artist[]
-  tracklist: Track[]
-  uri: string
-  identifiers?: Array<{
-    type: string
-    value: string
-  }>
-}
+import { Release } from 'disconnect'
 
 interface ReleaseClientProps {
   release: Release

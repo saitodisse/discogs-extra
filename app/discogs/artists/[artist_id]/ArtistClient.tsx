@@ -6,50 +6,14 @@ import Link from 'next/link'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { ExternalLink } from 'lucide-react'
+import { Artist, ArtistReleasesResponse } from 'disconnect'
+import { ReleaseItem } from '@/components/ReleaseItem'
 // Using our own Artist interface instead of the one from disconnect
-
-interface ArtistRelease {
-  id: number
-  title: string
-  type: string
-  thumb?: string
-  format?: string[]
-  label?: string[]
-  year?: number | string
-  resource_url?: string
-}
-
-interface ArtistResponse {
-  pagination: {
-    page: number
-    pages: number
-    per_page: number
-    items: number
-  }
-  releases: ArtistRelease[]
-}
-
-interface Artist {
-  id: number
-  name: string
-  realname?: string
-  profile?: string
-  uri: string
-  releases_url?: string
-  resource_url?: string
-  images?: Array<{
-    uri: string
-    height: number
-    width: number
-    resource_url?: string
-  }>
-  urls?: string[]
-}
 
 interface ArtistClientProps {
   artistId: string
   artist: Artist
-  releases: ArtistResponse
+  releases: ArtistReleasesResponse
   initialPage?: number
 }
 
@@ -122,39 +86,16 @@ export function ArtistClient({ artistId, artist, releases, initialPage = 1 }: Ar
       <h2 className="mb-6 text-2xl font-bold">Discography</h2>
       <div className="grid grid-cols-3 gap-4 sm:grid-cols-4 lg:grid-cols-6 xl:grid-cols-8">
         {releases.releases.map((release, index) => (
-          <Link
+          <ReleaseItem
             key={`${release.id}_${index}`}
-            href={`/discogs/releases/${release.id}`}
-            className="block"
-          >
-            <Card className="h-full transition-colors hover:bg-accent/50">
-              <CardHeader>
-                <CardTitle className="line-clamp-2 text-lg">{release.title}</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="mb-3 aspect-square overflow-hidden rounded-md bg-muted">
-                  {release.thumb ? (
-                    <Image
-                      src={release.thumb}
-                      alt={release.title}
-                      width={300}
-                      height={300}
-                      className="h-full w-full object-cover"
-                    />
-                  ) : (
-                    <div className="flex h-full w-full items-center justify-center text-muted-foreground">
-                      No Image
-                    </div>
-                  )}
-                </div>
-                <div className="text-sm text-muted-foreground">
-                  {release.year && <div>Year: {release.year}</div>}
-                  {release.format && <div>Format: {release.format}</div>}
-                  {release.label && <div>Label: {release.label.slice(0, 2)}</div>}
-                </div>
-              </CardContent>
-            </Card>
-          </Link>
+            id={release.id}
+            title={release.title}
+            thumb={release.thumb}
+            year={release.year}
+            format={release.format}
+            label={release.label}
+            compact
+          />
         ))}
       </div>
 

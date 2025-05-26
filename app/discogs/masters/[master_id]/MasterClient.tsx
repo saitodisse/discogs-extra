@@ -4,63 +4,10 @@ import Link from 'next/link'
 import { Badge } from '@/components/ui/badge'
 import { Card } from '@/components/ui/card'
 import { ExternalLink } from 'lucide-react'
-
-interface Artist {
-  name: string
-  id: number
-}
-
-interface Artist {
-  id: number
-  name: string
-  anv?: string
-  join?: string
-  resource_url?: string
-}
-
-interface Video {
-  uri: string
-  title: string
-  description?: string
-  duration?: number
-  embed?: boolean
-}
-
-interface Track {
-  position: string
-  type_?: string
-  title: string
-  duration: string
-  extraartists?: Artist[]
-}
-
-interface Master {
-  id: number
-  title: string
-  main_release?: number
-  main_release_url?: string
-  resource_url?: string
-  artists: Artist[]
-  genres?: string[]
-  styles?: string[]
-  year?: number | string
-  images?: Array<{
-    uri: string
-    height: number
-    width: number
-    resource_url?: string
-  }>
-  videos?: Video[]
-  tracklist: Track[]
-  uri: string
-  versions_url?: string
-  description?: string
-  notes?: string
-  data_quality?: string
-}
+import { MasterRelease } from 'disconnect'
 
 interface MasterClientProps {
-  master: Master
+  master: MasterRelease
 }
 
 export function MasterClient({ master }: MasterClientProps) {
