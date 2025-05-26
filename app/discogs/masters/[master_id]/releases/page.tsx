@@ -1,13 +1,7 @@
 import { Client } from 'disconnect'
 import { ReleasesClient } from './ReleasesClient'
 import 'server-only'
-import {
-  Breadcrumb,
-  BreadcrumbList,
-  BreadcrumbItem,
-  BreadcrumbLink,
-  BreadcrumbSeparator,
-} from '@/components/ui/breadcrumb'
+import { BreadcrumbDiscogs } from '@/app/discogs/BreadcrumbDiscogs'
 
 interface PageProps {
   params: Promise<{ master_id: string }>
@@ -49,8 +43,8 @@ export default async function ReleasesPage({ params, searchParams }: PageProps) 
   const view = viewParam === 'grid' ? 'grid' : 'list'
   const { master, releases, error } = await getDiscogsData(masterId, page)
 
-  console.log('Master data:', master)
-  console.log('Releases data:', releases)
+  console.log('Master:', master)
+  console.log('Releases:', releases)
 
   // convert releases to the expected format
   if (releases && releases.versions) {
@@ -65,27 +59,16 @@ export default async function ReleasesPage({ params, searchParams }: PageProps) 
 
   return (
     <>
-      <Breadcrumb className="ml-4 mt-4">
-        <BreadcrumbList>
-          <BreadcrumbItem>
-            <BreadcrumbLink href="/discogs">discogs</BreadcrumbLink>
-          </BreadcrumbItem>
-          <BreadcrumbSeparator />
-          <BreadcrumbItem>
-            <BreadcrumbLink href={`/discogs/masters/${master?.id}`}>
-              Master: {master?.artists?.[0]?.name} - {master?.title}
-              <span className="font-mono"> ({master?.id})</span>
-            </BreadcrumbLink>
-          </BreadcrumbItem>
-          <BreadcrumbSeparator />
-          <BreadcrumbItem>
-            <BreadcrumbLink href={`/discogs/masters/${master?.id}/releases`}>
-              All Releases
-            </BreadcrumbLink>
-          </BreadcrumbItem>
-        </BreadcrumbList>
-      </Breadcrumb>
-
+      {' '}
+      {master && (
+        <BreadcrumbDiscogs
+          entity={{
+            type: 'master',
+            data: master,
+          }}
+          showReleases={true}
+        />
+      )}
       <ReleasesClient
         masterId={masterId}
         master={master!}

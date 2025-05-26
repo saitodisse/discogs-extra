@@ -1,16 +1,9 @@
 import { Client } from 'disconnect'
-import { NextPage } from 'next'
 import { Badge } from '@/components/ui/badge'
 import { Card } from '@/components/ui/card'
 import Link from 'next/link'
 import { ExternalLink } from 'lucide-react'
-import {
-  Breadcrumb,
-  BreadcrumbList,
-  BreadcrumbItem,
-  BreadcrumbLink,
-  BreadcrumbSeparator,
-} from '@/components/ui/breadcrumb'
+import { BreadcrumbDiscogs } from '@/app/discogs/BreadcrumbDiscogs'
 
 interface Artist {
   name: string
@@ -94,24 +87,16 @@ export default async function ReleasePage({ params }: { params: Promise<{ releas
   try {
     const release = await client.database().getRelease(parseInt(release_id))
 
-    console.log('Release data:', release)
+    console.log('Release:', release)
 
     return (
       <div className="container mx-auto px-4">
-        <Breadcrumb className="my-4">
-          <BreadcrumbList>
-            <BreadcrumbItem>
-              <BreadcrumbLink href="/discogs">discogs</BreadcrumbLink>
-            </BreadcrumbItem>
-            <BreadcrumbSeparator />
-            <BreadcrumbItem>
-              <BreadcrumbLink href={`/discogs/releases/${release?.id}`}>
-                {release?.artists?.[0]?.name} - {release?.title}
-                <span className="font-mono"> ({release?.id})</span>
-              </BreadcrumbLink>
-            </BreadcrumbItem>
-          </BreadcrumbList>
-        </Breadcrumb>
+        <BreadcrumbDiscogs
+          entity={{
+            type: 'release',
+            data: release,
+          }}
+        />
 
         <Card className="w-full">
           <div className="grid gap-6 p-6 md:grid-cols-[300px_1fr]">

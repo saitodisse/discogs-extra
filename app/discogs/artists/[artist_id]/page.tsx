@@ -13,6 +13,7 @@ import {
   BreadcrumbSeparator,
 } from '@/components/ui/breadcrumb'
 import { release } from 'os'
+import { BreadcrumbDiscogs } from '../../BreadcrumbDiscogs'
 
 interface ReleaseWithThumb extends Omit<Release, 'thumb' | 'format' | 'label'> {
   thumb?: string
@@ -55,20 +56,12 @@ export default async function ArtistPage({ params }: { params: Promise<{ artist_
 
     return (
       <div className="container mx-auto px-4">
-        <Breadcrumb className="my-4">
-          <BreadcrumbList>
-            <BreadcrumbItem>
-              <BreadcrumbLink href="/discogs">discogs</BreadcrumbLink>
-            </BreadcrumbItem>
-            <BreadcrumbSeparator />
-            <BreadcrumbItem>
-              <BreadcrumbLink href={`/discogs/artists/${artist?.id}`}>
-                Artist: {artist?.name}
-                <span className="font-mono"> ({artist?.id})</span>
-              </BreadcrumbLink>
-            </BreadcrumbItem>
-          </BreadcrumbList>
-        </Breadcrumb>
+        <BreadcrumbDiscogs
+          entity={{
+            type: 'artist',
+            data: artist,
+          }}
+        />
 
         <div className="mb-8 flex flex-col gap-8 md:flex-row">
           {artist.images && artist.images.length > 0 && (
