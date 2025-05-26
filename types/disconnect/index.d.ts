@@ -710,16 +710,16 @@ declare module "disconnect" {
     getArtistReleases(
       artistId: number | string,
       params: PaginationParams & SortParams,
-      callback: DiscogsCallback<PaginatedResponse<Release>>,
+      callback: DiscogsCallback<ArtistReleasesResponse>,
     ): Client;
     getArtistReleases(
       artistId: number | string,
-      callback: DiscogsCallback<PaginatedResponse<Release>>,
+      callback: DiscogsCallback<ArtistReleasesResponse>,
     ): Client;
     getArtistReleases(
       artistId: number | string,
       params?: PaginationParams & SortParams,
-    ): Promise<PaginatedResponse<Release>>;
+    ): Promise<ArtistReleasesResponse>;
 
     getRelease(
       releaseId: number | string,
@@ -1296,4 +1296,41 @@ export interface MasterVersionsResponse {
       };
     };
   }>;
+}
+
+export interface ArtistRelease {
+  id: number;
+  title: string;
+  type: "master" | "release";
+  main_release?: number;
+  artist: string;
+  role: string;
+  resource_url: string;
+  year: number;
+  thumb: string;
+  stats: {
+    community: {
+      in_wantlist: number;
+      in_collection: number;
+    };
+  };
+  // Release specific fields
+  status?: string;
+  format?: string;
+  label?: string;
+  // Master specific fields
+}
+
+export interface ArtistReleasesResponse {
+  pagination: {
+    page: number;
+    pages: number;
+    per_page: number;
+    items: number;
+    urls: {
+      last?: string;
+      next?: string;
+    };
+  };
+  releases: ArtistRelease[];
 }
