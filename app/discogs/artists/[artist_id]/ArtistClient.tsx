@@ -94,7 +94,6 @@ export function ArtistClient({ artistId, artist, releases, initialPage = 1 }: Ar
             year={release.year}
             format={release.format}
             label={release.label}
-            compact
           />
         ))}
       </div>

@@ -12,7 +12,6 @@ interface ReleaseItemProps {
   year?: number | string
   format?: string | string[]
   label?: string | string[]
-  compact?: boolean
 }
 
 export function ReleaseItem({
@@ -24,19 +23,13 @@ export function ReleaseItem({
   year,
   format,
   label,
-  compact = false,
 }: ReleaseItemProps) {
   const url = getUrl({ id, type })
 
   return (
     <Link href={url} className="block">
       <Card className="h-full transition-colors hover:bg-accent/50">
-        {!compact && (
-          <CardHeader>
-            <CardTitle className="line-clamp-2 text-lg">{title}</CardTitle>
-          </CardHeader>
-        )}
-        <CardContent className={compact ? 'p-0' : undefined}>
+        <CardContent className={'p-0'}>
           <div className="mb-3 aspect-square overflow-hidden rounded-md bg-muted">
             {thumb || cover_image ? (
               <Image
@@ -52,11 +45,11 @@ export function ReleaseItem({
               </div>
             )}
           </div>
-          <div className={compact ? 'p-2' : undefined}>
+          <div className={'p-2'}>
             <div className="mb-2 text-xs text-muted-foreground">
               {year && <Badge>{year}</Badge>}
             </div>
-            {compact && <h2 className="mb-1 line-clamp-3 text-xs">{title}</h2>}
+            <h2 className="mb-1 line-clamp-3 text-xs">{title}</h2>
           </div>
         </CardContent>
       </Card>

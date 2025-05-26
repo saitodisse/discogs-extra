@@ -7,10 +7,11 @@ export default async function ArtistPage({
   searchParams,
 }: {
   params: Promise<{ artist_id: string }>
-  searchParams: { page?: string }
+  searchParams: Promise<{ page?: string }>
 }) {
   const { artist_id } = await params
-  const page = searchParams.page ? parseInt(searchParams.page) : 1
+  const searchParamsLocal = await searchParams
+  const page = searchParamsLocal.page ? parseInt(searchParamsLocal.page) : 1
   const perPage = 24
 
   if (!process.env.DISCOGS_CONSUMER_KEY || !process.env.DISCOGS_CONSUMER_SECRET) {

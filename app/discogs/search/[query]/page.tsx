@@ -110,7 +110,6 @@ export default async function SearchPage({
             year={item.year}
             format={item.format}
             label={item.label}
-            compact
           />
         ))}
       </div>
