@@ -5,10 +5,23 @@ import Link from 'next/link'
 import { Card } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { ExternalLink } from 'lucide-react'
-import { Release } from 'disconnect'
+import { Release, Track } from 'disconnect'
 
 interface ReleaseClientProps {
   release: Release
+}
+
+function TrackExtraArtist({ track }: { track: Track }) {
+  return track?.extraartists?.map((extra_artist) => (
+    <div key={extra_artist.id} className="ml-2 text-sm text-muted-foreground">
+      <Link href={`/discogs/artists/${extra_artist.id}`} className="text-blue-600 hover:underline">
+        {extra_artist.name}
+      </Link>
+      {extra_artist.role && <span className="ml-1">({extra_artist.role})</span>}
+      {extra_artist.anv && <span className="ml-1">– {extra_artist.anv}</span>}
+      {extra_artist.join && <span className="ml-1">– {extra_artist.join}</span>}
+    </div>
+  ))
 }
 
 export function ReleaseClient({ release }: ReleaseClientProps) {
@@ -118,6 +131,37 @@ export function ReleaseClient({ release }: ReleaseClientProps) {
             )}
           </div>
 
+          {/* Tracklist Section */}
+          {release.tracklist && release.tracklist.length > 0 && (
+            <div className="mb-6">
+              <h2 className="mb-2 text-xl font-semibold">Tracklist</h2>
+              <div className="grid gap-2">
+                {release.tracklist.map((track, index) => (
+                  <div key={index} className="flex justify-between">
+                    <div className="flex flex-col">
+                      <div className="flex items-center">
+                        <span className="mr-2 text-muted-foreground">{track.position}.</span>
+                        {track.title}
+                      </div>
+                      {track.artists && track.artists.length > 0 && (
+                        <span className="text-sm text-muted-foreground">
+                          {' '}
+                          by {track.artists.map((a) => a.name).join(', ')}
+                        </span>
+                      )}
+                      {track.extraartists && track.extraartists.length > 0 && (
+                        <TrackExtraArtist track={track} />
+                      )}
+                    </div>
+                    {track.duration && (
+                      <span className="text-muted-foreground">{track.duration}</span>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
           {release.notes && (
             <div className="mb-6">
               <h2 className="mb-2 text-xl font-semibold">Notes</h2>
@@ -129,42 +173,25 @@ export function ReleaseClient({ release }: ReleaseClientProps) {
           {release.extraartists && release.extraartists.length > 0 && (
             <div className="mb-6">
               <h2 className="mb-2 text-xl font-semibold">Credits</h2>
-              <div className="grid gap-2">
+              <div className="grid gap-1 text-sm">
                 {release.extraartists.map((artist, index) => (
-                  <div key={index}>
-                    {artist.role && <span className="font-medium">{artist.role}: </span>}
-                    <Link
-                      href={`/discogs/artists/${artist.id}`}
-                      className="text-blue-600 hover:underline"
-                    >
-                      {artist.name}
-                    </Link>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
+                  <div key={index} className="flex flex-col">
+                    {artist.role && <span className="font-light">{artist.role}: </span>}
 
-          {/* Tracklist Section */}
-          {release.tracklist && release.tracklist.length > 0 && (
-            <div className="mb-6">
-              <h2 className="mb-2 text-xl font-semibold">Tracklist</h2>
-              <div className="grid gap-2">
-                {release.tracklist.map((track, index) => (
-                  <div key={index} className="flex justify-between">
-                    <div>
-                      <span className="mr-2 text-muted-foreground">{track.position}.</span>
-                      {track.title}
-                      {track.artists && track.artists.length > 0 && (
-                        <span className="text-sm text-muted-foreground">
-                          {' '}
-                          by {track.artists.map((a) => a.name).join(', ')}
-                        </span>
+                    <div className="flex text-sm">
+                      <Link
+                        href={`/discogs/artists/${artist.id}`}
+                        className="ml-2 text-blue-600 hover:underline"
+                      >
+                        {artist.name}
+                      </Link>
+
+                      {artist.tracks && artist.tracks.length > 0 && (
+                        <div className="ml-2 font-thin text-muted-foreground">
+                          track: {artist.tracks}
+                        </div>
                       )}
                     </div>
-                    {track.duration && (
-                      <span className="text-muted-foreground">{track.duration}</span>
-                    )}
                   </div>
                 ))}
               </div>
