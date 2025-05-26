@@ -6,28 +6,7 @@ import {
   BreadcrumbList,
   BreadcrumbSeparator,
 } from '@/components/ui/breadcrumb'
-
-interface Artist {
-  id: number
-  name: string
-}
-
-interface Master {
-  id: number
-  title: string
-  artists?: Artist[]
-}
-
-interface Release {
-  id: number
-  title: string
-  artists?: Artist[]
-}
-
-interface Label {
-  id: number
-  name: string
-}
+import { Artist, Label, MasterRelease, Release } from 'disconnect'
 
 type DiscogsEntity =
   | {
@@ -36,7 +15,7 @@ type DiscogsEntity =
     }
   | {
       type: 'master'
-      data: Master
+      data: MasterRelease
     }
   | {
       type: 'release'
@@ -117,6 +96,18 @@ export function BreadcrumbDiscogs({ entity, showReleases }: BreadcrumbDiscogsPro
               <BreadcrumbLink href={`/discogs/artists/${entity.data.artists[0].id}`}>
                 {entity.data.artists[0].name}
                 <span className="font-mono"> ({entity.data.artists[0].id})</span>
+              </BreadcrumbLink>
+            </BreadcrumbItem>
+          )
+        }
+
+        // Add master link if available
+        if (entity.data.master_id) {
+          items.push(
+            <BreadcrumbItem key="master">
+              <BreadcrumbLink href={`/discogs/masters/${entity.data.master_id}`}>
+                Master
+                <span className="font-mono"> ({entity.data.master_id})</span>
               </BreadcrumbLink>
             </BreadcrumbItem>
           )
