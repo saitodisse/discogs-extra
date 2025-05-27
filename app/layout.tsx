@@ -48,7 +48,7 @@ export default function RootLayout({
                   {!hasEnvVars ? <EnvVarWarning /> : <HeaderAuth />}
                 </div>
               </nav>
-              <div className="flex max-w-5xl flex-col px-5">{children}</div>
+              <div className="flex max-w-7xl flex-col px-5">{children}</div>
 
               <footer className="mx-auto flex w-full items-center justify-center gap-8 border-t py-16 text-center text-xs">
                 <p>Discogs Extra!</p>
