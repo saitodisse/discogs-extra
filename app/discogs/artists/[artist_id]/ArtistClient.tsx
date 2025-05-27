@@ -1,26 +1,17 @@
 'use client'
 
-import { useQueryState, parseAsInteger } from 'nuqs'
 import Image from 'next/image'
-import Link from 'next/link'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Badge } from '@/components/ui/badge'
 import { ExternalLink } from 'lucide-react'
-import { Artist, ArtistReleasesResponse } from 'disconnect'
+import { Artist, DatabaseSearchMasterItem } from 'disconnect'
 import { ReleaseItem } from '@/components/ReleaseItem'
-// Using our own Artist interface instead of the one from disconnect
 
 interface ArtistClientProps {
   artistId: string
   artist: Artist
-  releases: ArtistReleasesResponse
-  initialPage?: number
+  mastersSearchResults: DatabaseSearchMasterItem[]
 }
 
-export function ArtistClient({ artistId, artist, releases, initialPage = 1 }: ArtistClientProps) {
-  const [page, setPage] = useQueryState('page', parseAsInteger.withDefault(initialPage))
-  const totalPages = releases.pagination.pages || 1
-
+export function ArtistClient({ artistId, artist, mastersSearchResults }: ArtistClientProps) {
   return (
     <div>
       <div className="mb-8 flex flex-col gap-8 md:flex-row">
@@ -83,9 +74,9 @@ export function ArtistClient({ artistId, artist, releases, initialPage = 1 }: Ar
         </div>
       </div>
 
-      <h2 className="mb-6 text-2xl font-bold">Discography</h2>
+      <h2 className="mb-6 text-lg italic">search for "{artist.name}" in masters</h2>
       <div className="grid grid-cols-3 gap-4 sm:grid-cols-4 lg:grid-cols-6 xl:grid-cols-8">
-        {releases.releases.map((release, index) => (
+        {mastersSearchResults.map((release, index) => (
           <ReleaseItem
             key={`${release.id}_${index}`}
             id={release.id}
@@ -97,34 +88,6 @@ export function ArtistClient({ artistId, artist, releases, initialPage = 1 }: Ar
           />
         ))}
       </div>
-
-      {totalPages > 1 && (
-        <div className="mt-8 flex items-center justify-center">
-          <nav className="flex items-center gap-6" aria-label="pagination">
-            <Link
-              href={`/discogs/artists/${artistId}?page=${page > 1 ? page - 1 : 1}`}
-              className={`flex h-10 w-10 items-center justify-center rounded-md border transition-colors hover:bg-accent ${
-                page <= 1 ? 'pointer-events-none opacity-50' : ''
-              }`}
-              aria-disabled={page <= 1}
-            >
-              ←
-            </Link>
-            <span className="text-sm">
-              Page {page} of {totalPages}
-            </span>
-            <Link
-              href={`/discogs/artists/${artistId}?page=${page < totalPages ? page + 1 : totalPages}`}
-              className={`flex h-10 w-10 items-center justify-center rounded-md border transition-colors hover:bg-accent ${
-                page >= totalPages ? 'pointer-events-none opacity-50' : ''
-              }`}
-              aria-disabled={page >= totalPages}
-            >
-              →
-            </Link>
-          </nav>
-        </div>
-      )}
     </div>
   )
 }

@@ -43,7 +43,7 @@ export default function RootLayout({
                 <div className="flex w-full max-w-5xl items-center justify-between p-3 px-5 text-sm">
                   <div className="flex items-center gap-5 font-semibold">
                     <Link href={'/'}>Discogs Extra!</Link>
-                    <Link href={'/discogs/search/Elis_Regina'}>Search</Link>
+                    <Link href={'/discogs/search/Elis_Regina?type=master'}>Search</Link>
                   </div>
                   {!hasEnvVars ? <EnvVarWarning /> : <HeaderAuth />}
                 </div>

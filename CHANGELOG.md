@@ -9,6 +9,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- [ ] save selected Master Releases from an Artist to database - images inclusive
+- [ ] merge all releases to a single master release with a lot of information
+
 ### Changed
 
 -
