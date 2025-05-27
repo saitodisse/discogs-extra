@@ -4,15 +4,22 @@
 -- This table is used to store detailed information about each release, including its title, artist(s), format(s), and other metadata.
 CREATE TABLE public.releases (
     id uuid PRIMARY KEY DEFAULT gen_random_uuid(), -- UUID as primary key
+
+    owner_id uuid, -- UUID of the owner (user) of this release
+    owner_email text, -- Email of the owner (user) of this release
+
     created_at timestamp DEFAULT now(), -- Timestamp of creation
     updated_at timestamp DEFAULT now(), -- Timestamp of last update
 
+    -- Discogs specific fields
     master_id bigint, -- Discogs master release ID
     releases_ids bigint[], -- Array of Discogs release IDs
 
+    -- Artist information
     artists_id bigint[], -- Array of Discogs artist IDs
     artists_name text[], -- Array of artist names (e.g., "The Beatles", "John Lennon"); in sync with artists_id
 
+    -- Release metadata
     title text NOT NULL,
     status text, -- Release status (e.g., "Accepted")
     data_quality text NOT NULL,
@@ -42,4 +49,5 @@ CREATE INDEX idx_master_id ON public.releases (master_id);
 -- Indexes GIN: for array columns
 CREATE INDEX idx_gin_releases_artists_name ON public.releases USING GIN (artists_name);
 CREATE INDEX idx_gin_releases_artists_id ON public.releases USING GIN (artists_id);
+
 
