@@ -7,11 +7,14 @@ import { Progress } from '@/components/ui/progress'
 import { Textarea } from '@/components/ui/textarea'
 import {
   discogs_getAllReleasesByMasterId,
-  getReleaseByMasterId,
-  saveJsonToTmp,
-  saveMasterAction,
+  db_getReleaseByMasterId,
+  debug_saveJsonToTmp,
+  db_saveMasterAction,
+  mergeExtraArtistsData,
+  mergeTracksData,
 } from './actions'
 import { v4 as uuid } from 'uuid'
+import { ReleaseDb } from './ReleaseDb'
 
 interface SavingProgressProps {
   master: MasterRelease
@@ -32,6 +35,12 @@ export function SavingProgress({ master }: SavingProgressProps) {
   const handleSave = async () => {
     let releaseIdDb = uuid()
 
+    await debug_saveJsonToTmp({
+      data: master,
+      filename: `master_${master.id}.json`,
+      lastPath: master.id.toString(),
+    })
+
     try {
       setIsSaving(true)
       setProgress(0)
@@ -39,19 +48,17 @@ export function SavingProgress({ master }: SavingProgressProps) {
 
       // Initialize
       addDebugMessage('Starting save process...')
-
-      console.log('DEBUG: Master Release:', master)
-
       setProgress(20)
 
-      addDebugMessage(`Check if master exists on database...`)
-      const masterDb = await getReleaseByMasterId(master.id)
-      if (masterDb) {
-        console.log('DEBUG: masterDb:', masterDb)
-        // will update the existing master
-        addDebugMessage(`Master with ID ${master.id} already exists in the database.`)
-        releaseIdDb = masterDb.id // Use existing ID (uuid) from the database
-      }
+      addDebugMessage(`[masterDb] Check or Create if master exists on database...`)
+      // masterDb: get or create new entry
+      let masterDb = await db_getReleaseByMasterId(master)
+      await debug_saveJsonToTmp({
+        data: masterDb,
+        filename: `masterDb_${masterDb.id}.json`,
+        lastPath: master.id.toString(),
+      })
+
       setProgress(40)
       setProgress(60) // Get all releases from master
       addDebugMessage('Fetching all releases from master...')
@@ -61,50 +68,51 @@ export function SavingProgress({ master }: SavingProgressProps) {
 
       for (const releaseVersionItem of releasesFromMaster.versions) {
         if (releaseVersionItem) {
-          console.log('DEBUG: releaseVersionItem:', releaseVersionItem)
+          console.log('\nDEBUG: releaseVersionItem:', releaseVersionItem)
 
           // get json from resource_url
           addDebugMessage(`Processing release ${releaseVersionItem.id}...`)
           const releaseData: Release = await fetch(releaseVersionItem.resource_url).then((res) =>
             res.json()
           )
+          // sleep for 1000ms to avoid rate limiting
+          await new Promise((resolve) => setTimeout(resolve, 1000))
 
           console.log('DEBUG: releaseData:', releaseData)
           addDebugMessage(`Fetched release data for ${releaseVersionItem.id}`)
 
-          // save to C:\Users\saito\_git\discogs-extra\app\discogs\masters\[master_id]\save\tmp
-          await saveJsonToTmp({
+          await debug_saveJsonToTmp({
             data: releaseData,
             filename: `release_${releaseVersionItem.id}.json`,
+            lastPath: master.id.toString(),
           })
 
-          // Merge data
-          // addDebugMessage(`Found existing release data for master ${master.id}`)
-          // addDebugMessage('Starting data merge process...')
+          addDebugMessage(`Found release data for ${releaseData.id}, starting merge process...`)
 
-          // // Log merge details
-          // if (release.tracklist_json) {
-          //   addDebugMessage(
-          //     `Merging ${master.tracklist.length} tracks with ${release.tracklist_json.length} existing tracks...`
-          //   )
-          // }
-          // if (release.images_json) {
-          //   addDebugMessage(
-          //     `Merging ${master.images?.length || 0} images with ${release.images_json.length} existing images...`
-          //   )
-          // }
-          // if (release.videos_json) {
-          //   addDebugMessage(
-          //     `Merging ${master.videos?.length || 0} videos with ${release.videos_json.length} existing videos...`
-          //   )
-          // }
+          // Merge release data
+          addDebugMessage('Merging release data...')
+          masterDb = await mergeTracksData(masterDb, releaseData)
+
+          // Merge extra artists
+          addDebugMessage('Merging extra artists data...')
+          masterDb = await mergeExtraArtistsData(masterDb, [releaseData])
+
+          addDebugMessage(`Merged release data for ${releaseData.id}`)
+          setProgress(80)
         }
       }
       setProgress(70)
 
       // Save to database
-      addDebugMessage('Saving merged data to database...')
-      const result = await saveMasterAction({ releaseIdDb, master })
+      addDebugMessage('\nSaving merged data to database...')
+
+      await debug_saveJsonToTmp({
+        data: masterDb,
+        filename: `merged_${releaseIdDb}.json`,
+        lastPath: master.id.toString(),
+      })
+
+      const result = await db_saveMasterAction({ releaseIdDb, master: masterDb })
       setProgress(90)
 
       // Complete
@@ -161,7 +169,7 @@ export function SavingProgress({ master }: SavingProgressProps) {
 
           <Textarea
             value={debugMessages.join('\n')}
-            className="h-64 flex-1 font-mono text-xs"
+            className="h-64 w-[70vw] flex-1 font-mono text-[10px]"
             readOnly
           />
         </div>
