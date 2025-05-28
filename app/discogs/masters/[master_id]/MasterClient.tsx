@@ -73,6 +73,12 @@ export function MasterClient({ master }: MasterClientProps) {
               >
                 view all releases
               </Link>
+              <Link
+                href={`/discogs/masters/${master.id}/save`}
+                className="text-sm text-primary underline"
+              >
+                save to database
+              </Link>
             </div>
 
             {master.year && (

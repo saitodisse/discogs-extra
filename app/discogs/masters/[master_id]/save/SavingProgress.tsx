@@ -12,6 +12,7 @@ import {
   db_saveMasterAction,
   mergeExtraArtistsData,
   mergeTracksData,
+  discogs_getReleaseById,
 } from './actions'
 import { v4 as uuid } from 'uuid'
 import { ReleaseDb } from './ReleaseDb'
@@ -48,7 +49,7 @@ export function SavingProgress({ master }: SavingProgressProps) {
 
       // Initialize
       addDebugMessage('Starting save process...')
-      setProgress(20)
+      setProgress(10)
 
       addDebugMessage(`[masterDb] Check or Create if master exists on database...`)
       // masterDb: get or create new entry
@@ -59,26 +60,21 @@ export function SavingProgress({ master }: SavingProgressProps) {
         lastPath: master.id.toString(),
       })
 
-      setProgress(40)
-      setProgress(60) // Get all releases from master
       addDebugMessage('Fetching all releases from master...')
       const releasesFromMaster = await discogs_getAllReleasesByMasterId(master.id)
 
-      console.log('DEBUG: releasesFromMaster:', releasesFromMaster)
+      setProgress(20)
+
+      let FULL_PROGRESS = 60
+      let eachReleaseProgress = 0
+      if (releasesFromMaster.versions.length > 0) {
+        eachReleaseProgress = FULL_PROGRESS / releasesFromMaster.versions.length
+      }
 
       for (const releaseVersionItem of releasesFromMaster.versions) {
         if (releaseVersionItem) {
-          console.log('\nDEBUG: releaseVersionItem:', releaseVersionItem)
-
-          // get json from resource_url
           addDebugMessage(`Processing release ${releaseVersionItem.id}...`)
-          const releaseData: Release = await fetch(releaseVersionItem.resource_url).then((res) =>
-            res.json()
-          )
-          // sleep for 1000ms to avoid rate limiting
-          await new Promise((resolve) => setTimeout(resolve, 1000))
-
-          console.log('DEBUG: releaseData:', releaseData)
+          const releaseData: Release = await discogs_getReleaseById(releaseVersionItem.id)
           addDebugMessage(`Fetched release data for ${releaseVersionItem.id}`)
 
           await debug_saveJsonToTmp({
@@ -98,10 +94,13 @@ export function SavingProgress({ master }: SavingProgressProps) {
           masterDb = await mergeExtraArtistsData(masterDb, [releaseData])
 
           addDebugMessage(`Merged release data for ${releaseData.id}`)
-          setProgress(80)
+          setProgress((prev) => prev + eachReleaseProgress)
+
+          // sleep for 600ms to avoid rate limiting
+          await new Promise((resolve) => setTimeout(resolve, 600))
         }
       }
-      setProgress(70)
+      setProgress(80)
 
       // Save to database
       addDebugMessage('\nSaving merged data to database...')

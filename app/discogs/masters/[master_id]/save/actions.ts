@@ -223,7 +223,6 @@ export const db_saveMasterAction = async ({
   releaseIdDb: string; // ID of the release in your database, used for updates
   master?: ReleaseDb; // Optional, can be used for additional data if needed
 }) => {
-  console.log("DEBUG: [saveMasterAction] master:", master);
   const supabase = await createClient();
 
   const {
@@ -274,7 +273,7 @@ export const db_getReleaseByMasterId = async (
     .eq("master_id", master.id)
     .single();
 
-  if (error?.code !== "PGRST116") {
+  if (error && error?.code !== "PGRST116") {
     throw new Error(
       "Error fetching release by master ID:" + JSON.stringify(error) + "," +
         " data: " + JSON.stringify(data),
@@ -338,6 +337,21 @@ export const discogs_getAllReleasesByMasterId = async (masterId: number) => {
   );
 
   return releases;
+};
+
+export const discogs_getReleaseById = async (releaseId: number) => {
+  if (!releaseId) {
+    throw new Error("Release ID is required");
+  }
+
+  const client = new Client({
+    method: "discogs",
+    consumerKey: process.env.DISCOGS_CONSUMER_KEY,
+    consumerSecret: process.env.DISCOGS_CONSUMER_SECRET,
+  });
+  const release = await client.database().getRelease(releaseId);
+
+  return release;
 };
 
 export const debug_saveJsonToTmp = async ({
