@@ -27,10 +27,22 @@ export function SavingProgress({ master }: SavingProgressProps) {
   const [isSaving, setIsSaving] = useState(false)
 
   const addDebugMessage = (message: string) => {
-    setDebugMessages((prev) => [
-      ...prev,
-      `${new Date().getMinutes()}:${new Date().getSeconds()}.${new Date().getMilliseconds()} - ${message}`,
-    ])
+    // padding the message to ensure consistent formatting
+    const minutes = new Date().getMinutes().toString().padStart(2, '0')
+    const seconds = new Date().getSeconds().toString().padStart(2, '0')
+    const milliseconds = new Date().getMilliseconds().toString().padStart(3, '0')
+    setDebugMessages((prev) => [...prev, `${minutes}:${seconds}.${milliseconds} - ${message}`])
+
+    // scroll to bottom of textarea after 200ms delay
+    setTimeout(() => {
+      const textarea = document.querySelector('textarea')
+      if (textarea) {
+        textarea.scrollTo({
+          top: textarea.scrollHeight,
+          behavior: 'smooth',
+        })
+      }
+    }, 200)
   }
 
   const handleSave = async () => {
@@ -48,10 +60,10 @@ export function SavingProgress({ master }: SavingProgressProps) {
       setDebugMessages([])
 
       // Initialize
-      addDebugMessage('Starting save process...')
+      addDebugMessage(`starting save process for ${master.id}...`)
       setProgress(10)
 
-      addDebugMessage(`[masterDb] Check or Create if master exists on database...`)
+      addDebugMessage(`[masterDb] check or create if master exists on database...`)
       // masterDb: get or create new entry
       let masterDb = await db_getReleaseByMasterId(master)
       await debug_saveJsonToTmp({
@@ -60,9 +72,11 @@ export function SavingProgress({ master }: SavingProgressProps) {
         lastPath: master.id.toString(),
       })
 
-      addDebugMessage('Fetching all releases from master...')
+      addDebugMessage(`[discogs] fetching all releases from master ${master.id}...`)
       const releasesFromMaster = await discogs_getAllReleasesByMasterId(master.id)
-
+      addDebugMessage(
+        `[discogs] found ${releasesFromMaster.versions.length} releases for master ${master.id}`
+      )
       setProgress(20)
 
       let FULL_PROGRESS = 60
@@ -71,11 +85,11 @@ export function SavingProgress({ master }: SavingProgressProps) {
         eachReleaseProgress = FULL_PROGRESS / releasesFromMaster.versions.length
       }
 
+      addDebugMessage(`each release will contribute ${eachReleaseProgress.toFixed(2)}% to progress`)
       for (const releaseVersionItem of releasesFromMaster.versions) {
         if (releaseVersionItem) {
-          addDebugMessage(`Processing release ${releaseVersionItem.id}...`)
           const releaseData: Release = await discogs_getReleaseById(releaseVersionItem.id)
-          addDebugMessage(`Fetched release data for ${releaseVersionItem.id}`)
+          addDebugMessage(`[${releaseVersionItem.id}] fetched release (*)`)
 
           await debug_saveJsonToTmp({
             data: releaseData,
@@ -83,17 +97,15 @@ export function SavingProgress({ master }: SavingProgressProps) {
             lastPath: master.id.toString(),
           })
 
-          addDebugMessage(`Found release data for ${releaseData.id}, starting merge process...`)
-
           // Merge release data
-          addDebugMessage('Merging release data...')
+          addDebugMessage(`[${releaseVersionItem.id}] mergeTracksData`)
           masterDb = await mergeTracksData(masterDb, releaseData)
 
           // Merge extra artists
-          addDebugMessage('Merging extra artists data...')
+          addDebugMessage(`[${releaseVersionItem.id}] mergeExtraArtistsData`)
           masterDb = await mergeExtraArtistsData(masterDb, [releaseData])
 
-          addDebugMessage(`Merged release data for ${releaseData.id}`)
+          addDebugMessage(`[${releaseVersionItem.id}] merged release data for ${releaseData.id}`)
           setProgress((prev) => prev + eachReleaseProgress)
 
           // sleep for 600ms to avoid rate limiting
@@ -103,7 +115,7 @@ export function SavingProgress({ master }: SavingProgressProps) {
       setProgress(80)
 
       // Save to database
-      addDebugMessage('\nSaving merged data to database...')
+      addDebugMessage(`saving merged data to database...`)
 
       await debug_saveJsonToTmp({
         data: masterDb,
@@ -118,8 +130,8 @@ export function SavingProgress({ master }: SavingProgressProps) {
       if (result.error) {
         addDebugMessage(`Error: ${result.error}`)
       } else {
-        addDebugMessage(result.message || 'Master saved successfully')
-        addDebugMessage('All data merged and saved successfully!')
+        addDebugMessage(result.message || 'master saved successfully')
+        addDebugMessage('all data merged and saved successfully!')
       }
       setProgress(100)
     } catch (error) {
@@ -168,7 +180,9 @@ export function SavingProgress({ master }: SavingProgressProps) {
 
           <Textarea
             value={debugMessages.join('\n')}
-            className="h-64 w-[70vw] flex-1 font-mono text-[10px]"
+            className="h-64 w-[70vw] flex-1 font-mono text-muted-foreground"
+            style={{ fontSize: '12px' }}
+            placeholder="Debug messages will appear here..."
             readOnly
           />
         </div>
