@@ -2,7 +2,7 @@
 
 import { createClient } from "@/utils/supabase/server";
 import { Client, MasterRelease, Release } from "disconnect";
-import { ReleaseDb } from "./ReleaseDb";
+import { ReleaseDb } from "../../../../../types/ReleaseDb";
 import { v4 as uuid } from "uuid";
 
 // Helper functions for merging data

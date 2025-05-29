@@ -15,7 +15,7 @@ import {
   discogs_getReleaseById,
 } from './actions'
 import { v4 as uuid } from 'uuid'
-import { ReleaseDb } from './ReleaseDb'
+import { ReleaseDb } from '../../../../../types/ReleaseDb'
 
 interface SavingProgressProps {
   master: MasterRelease

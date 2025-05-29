@@ -41,9 +41,12 @@ export default function RootLayout({
             <div className="flex w-full flex-1 flex-col items-center">
               <nav className="flex h-16 w-full justify-center border-b border-b-foreground/10">
                 <div className="flex w-full max-w-5xl items-center justify-between p-3 px-5 text-sm">
-                  <div className="flex items-center gap-5 font-semibold">
-                    <Link href={'/'}>Discogs Extra!</Link>
-                    <Link href={'/discogs/search/Elis_Regina?type=master'}>Search</Link>
+                  <div className="flex items-baseline gap-5">
+                    <Link className="text-2xl text-primary/80" href={'/'}>
+                      Discogs Extra!
+                    </Link>
+                    <Link href={'/masters'}>Masters</Link>
+                    <Link href={'/discogs/search/Elis_Regina?type=master'}>Search Discogs</Link>
                   </div>
                   {!hasEnvVars ? <EnvVarWarning /> : <HeaderAuth />}
                 </div>
