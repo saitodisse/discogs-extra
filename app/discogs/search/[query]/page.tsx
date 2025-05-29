@@ -1,16 +1,7 @@
 import { SearchInput } from '@/components/SearchInput'
-import { Badge } from '@/components/ui/badge'
-import { Input } from '@/components/ui/input'
-import {
-  Client,
-  DatabaseSearchArtistItem,
-  DatabaseSearchMasterItem,
-  DatabaseSearchReleaseItem,
-  DatabaseSearchResponse,
-} from 'disconnect'
-import { NextPage } from 'next'
+import { Client, DatabaseSearchResponse } from 'disconnect'
 import Link from 'next/link'
-import { ReleaseItem } from '@/components/ReleaseItem'
+import { SearchClient } from './SearchClient'
 
 export default async function SearchPage({
   params,
@@ -20,15 +11,15 @@ export default async function SearchPage({
   searchParams: Promise<{
     page?: string
     type?: 'release' | 'master' | 'artist' | 'label'
+    view?: 'list' | 'grid'
   }>
 }) {
   const { query } = await params
-  const { page: pageStr = '1', type = 'release' } = await searchParams
+  const { page: pageStr = '1', type = 'release', view } = await searchParams
   const page = parseInt(pageStr)
-  let perPage = 24
+  const perPage = type === 'master' ? 100 : 24 // Masters typically have fewer results
 
   if (!process.env.DISCOGS_CONSUMER_KEY || !process.env.DISCOGS_CONSUMER_SECRET) {
-    console.error('Missing required Discogs API credentials')
     return (
       <div className="container mx-auto p-4">
         <h1 className="mb-4 text-2xl font-bold">Error</h1>
@@ -37,31 +28,13 @@ export default async function SearchPage({
     )
   }
 
-  let searchResults: DatabaseSearchResponse = {
-    results: [],
-    pagination: {
-      pages: 1,
-      items: 0,
-      page: page,
-      per_page: perPage,
-      urls: {
-        next: undefined,
-        last: undefined,
-      },
-    },
-  }
-  let pagination = { pages: 1, items: 0 }
-
+  let searchResults: DatabaseSearchResponse
   try {
     const client = new Client({
       method: 'discogs',
-      consumerKey: process.env.DISCOGS_CONSUMER_KEY!,
-      consumerSecret: process.env.DISCOGS_CONSUMER_SECRET!,
+      consumerKey: process.env.DISCOGS_CONSUMER_KEY,
+      consumerSecret: process.env.DISCOGS_CONSUMER_SECRET,
     })
-
-    if (type === 'master') {
-      perPage = 100 // Masters typically have fewer results, so we can show "all" at once
-    }
 
     searchResults = await client.database().search(query, {
       type,
@@ -70,11 +43,6 @@ export default async function SearchPage({
       sort: 'year',
       sort_order: 'asc',
     })
-
-    pagination = {
-      pages: searchResults.pagination?.pages || 1,
-      items: searchResults.pagination?.items || 0,
-    }
   } catch (error) {
     console.error('Error searching Discogs:', error)
     return (
@@ -103,70 +71,32 @@ export default async function SearchPage({
       <SearchInput initialQuery={decodeURIComponent(query)} initialType={type} />
 
       <h1 className="mb-6 mt-8 italic">
-        Search Results for "{decodeURIComponent(query)}" ({pagination.items} items)
+        Search Results for "{decodeURIComponent(query)}" ({searchResults.pagination.items} items)
       </h1>
 
-      <div className="grid grid-cols-1 gap-6 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6">
-        {searchResults.results.map((item) => {
-          if (type === 'master') {
-            item = item as DatabaseSearchMasterItem
-            return (
-              <ReleaseItem
-                key={`${item.type}-${item.id}`}
-                id={item.id}
-                title={item.title}
-                type={item.type}
-                thumb={item.thumb}
-                cover_image={item.cover_image}
-                year={item.year}
-                format={item.format}
-                label={item.label}
-              />
-            )
-          } else if (type === 'release') {
-            item = item as DatabaseSearchReleaseItem
-            return (
-              <ReleaseItem
-                key={`${item.type}-${item.id}`}
-                id={item.id}
-                title={item.title}
-                type={item.type}
-                thumb={item.thumb}
-                cover_image={item.cover_image}
-                year={item.year}
-                format={item.format}
-                label={item.label}
-              />
-            )
-          } else {
-            item = item as DatabaseSearchArtistItem
-            return (
-              <ReleaseItem
-                key={`${item.type}-${item.id}`}
-                id={item.id}
-                title={item.title}
-                type={item.type}
-                thumb={item.thumb}
-                cover_image={item.cover_image}
-              />
-            )
-          }
-        })}
-      </div>
+      <SearchClient
+        results={searchResults.results}
+        type={type}
+        initialView={view as 'list' | 'grid'}
+      />
 
-      {pagination.pages > 1 && (
+      {searchResults.pagination.pages > 1 && (
         <div className="mt-8 flex justify-center gap-2">
           {page > 1 && (
             <Link
-              href={`/discogs/search/${encodeURIComponent(query)}?page=${page - 1}${type ? `&type=${type}` : ''}`}
+              href={`/discogs/search/${encodeURIComponent(query)}?page=${
+                page - 1
+              }${type ? `&type=${type}` : ''}${view ? `&view=${view}` : ''}`}
               className="rounded border px-4 py-2 text-accent-foreground hover:bg-accent"
             >
               Previous
             </Link>
           )}
-          {page < pagination.pages && (
+          {page < searchResults.pagination.pages && (
             <Link
-              href={`/discogs/search/${encodeURIComponent(query)}?page=${page + 1}${type ? `&type=${type}` : ''}`}
+              href={`/discogs/search/${encodeURIComponent(query)}?page=${
+                page + 1
+              }${type ? `&type=${type}` : ''}${view ? `&view=${view}` : ''}`}
               className="rounded border px-4 py-2 text-accent-foreground hover:bg-accent"
             >
               Next
