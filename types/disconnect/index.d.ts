@@ -228,6 +228,7 @@ declare module "disconnect" {
     duration?: string;
     artists?: ArtistStub[];
     extraartists?: ArtistStub[];
+    extra_track?: boolean;
   }
 
   export interface Video {

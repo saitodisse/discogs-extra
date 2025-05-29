@@ -1,7 +1,7 @@
 "use server";
 
 import { createClient } from "@/utils/supabase/server";
-import { Client, MasterRelease, Release } from "disconnect";
+import { Client, MasterRelease, Release, Track } from "disconnect";
 import { ReleaseDb } from "../../../../../types/ReleaseDb";
 import { v4 as uuid } from "uuid";
 
@@ -16,7 +16,10 @@ const mergeJsonIfLarger = (original: any, updated: any) => {
   return updatedStr.length > originalStr.length ? updated : original;
 };
 
-const mergeTracks = (originalTracks: any[] = [], updatedTracks: any[] = []) => {
+export const mergeTracks = (
+  originalTracks: Track[] = [],
+  updatedTracks: Track[] = [],
+) => {
   if (!originalTracks) return updatedTracks || [];
   if (!updatedTracks) return originalTracks;
 
@@ -29,7 +32,7 @@ const mergeTracks = (originalTracks: any[] = [], updatedTracks: any[] = []) => {
 
     if (existingIndex === -1) {
       // New track, add it
-      mergedTracks.push({ updatedTrack, extra_track: true });
+      mergedTracks.push({ ...updatedTrack, extra_track: true });
     } else {
       // Existing track, check if we should update it
       const existingTrack = mergedTracks[existingIndex];
