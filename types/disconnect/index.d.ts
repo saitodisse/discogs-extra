@@ -231,6 +231,7 @@ declare module 'disconnect' {
     extraartists?: ArtistStub[]
     is_on_master?: boolean
     extra_track?: boolean
+    sub_tracks?: Track[]
   }
 
   export interface Video {
