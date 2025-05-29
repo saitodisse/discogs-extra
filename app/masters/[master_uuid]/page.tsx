@@ -43,7 +43,7 @@ export default async function MasterPage({ params }: { params: Promise<{ master_
           <BreadcrumbSeparator />
           <BreadcrumbItem>
             <BreadcrumbPage>
-              {master.artists_name.join(', ')} - {master.title} ({master.master_id})
+              {master?.artists_name?.join(', ')} - {master?.title} ({master.master_id})
             </BreadcrumbPage>
           </BreadcrumbItem>
         </BreadcrumbList>
