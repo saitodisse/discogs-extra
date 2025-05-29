@@ -16,7 +16,7 @@ const mergeJsonIfLarger = (original: any, updated: any) => {
   return updatedStr.length > originalStr.length ? updated : original
 }
 
-export const mergeTracks = (originalTracks: Track[] = [], updatedTracks: Track[] = []) => {
+export async function mergeTracks(originalTracks: Track[] = [], updatedTracks: Track[] = []) {
   if (!originalTracks) return updatedTracks || []
   if (!updatedTracks) return originalTracks
 
@@ -192,7 +192,7 @@ export const mergeTracksData = async (
   return {
     ...master,
     releases_ids,
-    tracklist_json: mergeTracks(master?.tracklist_json || [], newRelease.tracklist || []),
+    tracklist_json: await mergeTracks(master?.tracklist_json || [], newRelease.tracklist || []),
   }
 }
 
