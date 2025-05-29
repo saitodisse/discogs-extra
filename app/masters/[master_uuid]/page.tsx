@@ -136,16 +136,16 @@ export default async function MasterPage({ params }: { params: Promise<{ master_
                 <div className="divide-y divide-muted">
                   {master.tracklist_json.map((track, index) => {
                     // Find extra artists for this track
-                    const trackExtraArtists = master.extraartists_json?.filter(artist => 
-                      artist.roles.some(role => role.tracks?.includes(track.position))
-                    );
+                    const trackExtraArtists = master.extraartists_json?.filter((artist) =>
+                      artist.roles.some((role) => role.tracks?.includes(track.position))
+                    )
 
                     return (
                       <div key={index} className="py-2">
-                        <div className="flex justify-between items-start">
-                          <div className="flex flex-col flex-grow">
+                        <div className="flex items-start justify-between">
+                          <div className="flex flex-grow flex-col">
                             <div className="flex items-center">
-                              <span className="mr-2 font-mono text-muted-foreground w-8">
+                              <span className="mr-2 w-8 font-mono text-muted-foreground">
                                 {track.position}
                               </span>
                               <span className="font-medium">{track.title}</span>
@@ -159,12 +159,14 @@ export default async function MasterPage({ params }: { params: Promise<{ master_
                             {trackExtraArtists && trackExtraArtists.length > 0 && (
                               <div className="ml-10 text-sm text-muted-foreground">
                                 {trackExtraArtists.map((artist, artistIndex) => (
-                                  <div key={artistIndex} className="flex gap-1 items-center">
+                                  <div key={artistIndex} className="flex items-center gap-1">
                                     {artist.roles
-                                      .filter(role => role.tracks?.includes(track.position))
+                                      .filter((role) => role.tracks?.includes(track.position))
                                       .map((role, roleIndex) => (
                                         <div key={roleIndex} className="flex items-center">
-                                          <span className="text-muted-foreground">{role.role}:</span>
+                                          <span className="text-muted-foreground">
+                                            {role.role}:
+                                          </span>
                                           <Link
                                             href={`/discogs/artists/${artist.id}`}
                                             className="ml-1 text-blue-600 hover:underline"
@@ -186,7 +188,7 @@ export default async function MasterPage({ params }: { params: Promise<{ master_
                           </div>
                         </div>
                       </div>
-                    );
+                    )
                   })}
                 </div>
               </div>
@@ -207,47 +209,52 @@ export default async function MasterPage({ params }: { params: Promise<{ master_
                   {/* Group artists by role */}
                   {Array.from(
                     new Set(
-                      master.extraartists_json.flatMap(artist => 
-                        artist.roles.map(role => role.role)
+                      master.extraartists_json.flatMap((artist) =>
+                        artist.roles.map((role) => role.role)
                       )
                     )
-                  ).sort().map(role => {
-                    const artistsWithRole = master.extraartists_json.filter(artist =>
-                      artist.roles.some(r => r.role === role)
-                    );
+                  )
+                    .sort()
+                    .map((role) => {
+                      const artistsWithRole = master.extraartists_json.filter((artist) =>
+                        artist.roles.some((r) => r.role === role)
+                      )
 
-                    return (
-                      <div key={role} className="space-y-1">
-                        <h3 className="font-medium text-muted-foreground">{role}</h3>
-                        <div className="ml-4 space-y-1">
-                          {artistsWithRole.map((artist, index) => (
-                            <div key={index} className="flex flex-wrap items-center gap-x-1">
-                              <Link
-                                href={`/discogs/artists/${artist.id}`}
-                                className="text-blue-600 hover:underline"
-                              >
-                                {artist.name}
-                              </Link>
-                              {artist.anv && (
-                                <span className="text-sm text-muted-foreground">
-                                  ({artist.anv})
-                                </span>
-                              )}
-                              {artist.roles
-                                .filter(r => r.role === role && r.tracks)
-                                .map(r => r.tracks)
-                                .filter(Boolean)
-                                .map((tracks, trackIndex) => (
-                                  <span key={trackIndex} className="text-sm text-muted-foreground">
-                                    - track{tracks?.includes(',') ? 's' : ''}: {tracks}
+                      return (
+                        <div key={role} className="space-y-1">
+                          <h3 className="font-medium text-muted-foreground">{role}</h3>
+                          <div className="ml-4 space-y-1">
+                            {artistsWithRole.map((artist, index) => (
+                              <div key={index} className="flex flex-wrap items-center gap-x-1">
+                                <Link
+                                  href={`/discogs/artists/${artist.id}`}
+                                  className="text-blue-600 hover:underline"
+                                >
+                                  {artist.name}
+                                </Link>
+                                {artist.anv && (
+                                  <span className="text-sm text-muted-foreground">
+                                    ({artist.anv})
                                   </span>
-                                ))}
-                            </div>
-                          ))}
+                                )}
+                                {artist.roles
+                                  .filter((r) => r.role === role && r.tracks)
+                                  .map((r) => r.tracks)
+                                  .filter(Boolean)
+                                  .map((tracks, trackIndex) => (
+                                    <span
+                                      key={trackIndex}
+                                      className="text-sm text-muted-foreground"
+                                    >
+                                      - track{tracks?.includes(',') ? 's' : ''}: {tracks}
+                                    </span>
+                                  ))}
+                              </div>
+                            ))}
+                          </div>
                         </div>
-                      </div>
-                    );
-                  })}
+                      )
+                    })}
                 </div>
               </div>
             )}

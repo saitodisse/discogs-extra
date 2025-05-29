@@ -42,7 +42,9 @@ interface ReleasesClientProps {
 // --- Helper Components ---
 
 const NoImagePlaceholder = ({ className }: { className?: string }) => (
-  <div className={className || 'flex h-full w-full items-center justify-center text-muted-foreground'}>
+  <div
+    className={className || 'flex h-full w-full items-center justify-center text-muted-foreground'}
+  >
     No Image
   </div>
 )
@@ -100,7 +102,10 @@ const DisplayFormats: React.FC<DisplayFormatsProps> = ({
   if (Array.isArray(formatValue)) {
     formatsArray = formatValue.map((f) => f.trim()).filter((f) => f)
   } else {
-    formatsArray = formatValue.split(/,\s*/).map((f) => f.trim()).filter((f) => f)
+    formatsArray = formatValue
+      .split(/,\s*/)
+      .map((f) => f.trim())
+      .filter((f) => f)
   }
 
   if (formatsArray.length === 0) return <>-</>
