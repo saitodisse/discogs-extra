@@ -3,11 +3,11 @@ import { mergeTracks } from './actions'
 import { Track } from 'disconnect'
 
 describe('mergeTracks', () => {
-  it('should return empty array when both inputs are undefined', () => {
-    expect(mergeTracks(undefined, undefined)).toEqual([])
+  it('should return empty array when both inputs are undefined', async () => {
+    expect(await mergeTracks(undefined, undefined)).toEqual([])
   })
 
-  it('should return updatedTracks when originalTracks is undefined', () => {
+  it('should return updatedTracks when originalTracks is undefined', async () => {
     const updatedTracks: Track[] = [
       {
         position: 'A1',
@@ -16,10 +16,10 @@ describe('mergeTracks', () => {
         duration: '',
       },
     ]
-    expect(mergeTracks(undefined, updatedTracks)).toEqual(updatedTracks)
+    expect(await mergeTracks(undefined, updatedTracks)).toEqual(updatedTracks)
   })
 
-  it('should return originalTracks when updatedTracks is undefined', () => {
+  it('should return originalTracks when updatedTracks is undefined', async () => {
     const originalTracks: Track[] = [
       {
         position: 'A1',
@@ -28,10 +28,10 @@ describe('mergeTracks', () => {
         duration: '',
       },
     ]
-    expect(mergeTracks(originalTracks, undefined)).toEqual(originalTracks)
+    expect(await mergeTracks(originalTracks, undefined)).toEqual(originalTracks)
   })
 
-  it('should merge tracks and mark new tracks as extra_track', () => {
+  it('should merge tracks and mark new tracks as extra_track', async () => {
     const originalTracks: Track[] = [
       {
         position: 'A1',
@@ -90,10 +90,10 @@ describe('mergeTracks', () => {
       },
     ]
 
-    expect(mergeTracks(originalTracks, updatedTracks)).toEqual(expected)
+    expect(await mergeTracks(originalTracks, updatedTracks)).toEqual(expected)
   })
 
-  it('should not merge tracks if only changes title', () => {
+  it('should not merge tracks if only changes title', async () => {
     const originalTracks: Track[] = [
       {
         position: 'A2',
@@ -123,10 +123,43 @@ describe('mergeTracks', () => {
       },
     ]
 
-    expect(mergeTracks(originalTracks, updatedTracks)).toEqual(expected)
+    expect(await mergeTracks(originalTracks, updatedTracks)).toEqual(expected)
   })
 
-  it('should update existing track if updated track has more extra artists', () => {
+  it('should not merge tracks if title is the same but not position', async () => {
+    const originalTracks: Track[] = [
+      {
+        position: 'A2',
+        type_: 'track',
+        title: 'Track 2',
+        duration: '',
+        extraartists: [],
+      },
+    ]
+    const updatedTracks: Track[] = [
+      {
+        position: '2',
+        type_: 'track',
+        title: 'Track 2',
+        duration: '',
+        extraartists: [],
+      },
+    ]
+
+    const expected: Track[] = [
+      {
+        position: 'A2',
+        type_: 'track',
+        title: 'Track 2',
+        duration: '',
+        extraartists: [],
+      },
+    ]
+
+    expect(await mergeTracks(originalTracks, updatedTracks)).toEqual(expected)
+  })
+
+  it('should update existing track if updated track has more extra artists', async () => {
     const originalTracks: Track[] = [
       {
         position: 'A1',
@@ -176,10 +209,10 @@ describe('mergeTracks', () => {
       },
     ]
 
-    expect(mergeTracks(originalTracks, updatedTracks)).toEqual(expected)
+    expect(await mergeTracks(originalTracks, updatedTracks)).toEqual(expected)
   })
 
-  it('should keep original track if it has more or equal extra artists', () => {
+  it('should keep original track if it has more or equal extra artists', async () => {
     const originalTracks: Track[] = [
       {
         position: 'A1',
@@ -226,6 +259,6 @@ describe('mergeTracks', () => {
       },
     ]
 
-    expect(mergeTracks(originalTracks, updatedTracks)).toEqual(originalTracks)
+    expect(await mergeTracks(originalTracks, updatedTracks)).toEqual(originalTracks)
   })
 })

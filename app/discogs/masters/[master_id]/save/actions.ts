@@ -16,12 +16,10 @@ const mergeJsonIfLarger = (original: any, updated: any) => {
   return updatedStr.length > originalStr.length ? updated : original
 }
 
-export async function mergeTracks(originalTracks: Track[] = [], updatedTracks: Track[] = []) {
-  if (!originalTracks) return updatedTracks || []
-  if (!updatedTracks) return originalTracks
-
-  // If we're starting with an empty array, return updatedTracks without extra_track flag
-  if (originalTracks.length === 0) return [...updatedTracks]
+export async function mergeTracks(originalTracks?: Track[], updatedTracks?: Track[]): Track[] {
+  if (!originalTracks && !updatedTracks) return []
+  if (!originalTracks) return [...(updatedTracks || [])]
+  if (!updatedTracks) return [...originalTracks]
 
   const mergedTracks = [...originalTracks]
 
@@ -50,7 +48,7 @@ export async function mergeTracks(originalTracks: Track[] = [], updatedTracks: T
     }
   })
 
-  return mergedTracks
+  return Promise.resolve(mergedTracks)
 }
 
 // Function to merge extra artists data
@@ -321,6 +319,16 @@ export const db_getReleaseByMasterId = async (master: MasterRelease): Promise<Re
   }
 
   return data
+}
+
+export const db_deleteReleaseById = async (releaseId: string) => {
+  const supabase = await createClient()
+  const { error } = await supabase.from('releases').delete().eq('id', releaseId)
+  if (error) {
+    console.error(error.code + ' ' + error.message)
+    throw new Error('Error deleting release: ' + error.message)
+  }
+  return { message: 'Release deleted successfully' }
 }
 
 export const discogs_getAllReleasesByMasterId = async (masterId: number) => {

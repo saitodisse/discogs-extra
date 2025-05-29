@@ -13,6 +13,7 @@ import {
   mergeExtraArtistsData,
   mergeTracksData,
   discogs_getReleaseById,
+  db_deleteReleaseById,
 } from './actions'
 import { v4 as uuid } from 'uuid'
 import { ReleaseDb } from '../../../../../types/ReleaseDb'
@@ -24,7 +25,7 @@ interface SavingProgressProps {
 export function SavingProgress({ master }: SavingProgressProps) {
   const [progress, setProgress] = useState(0)
   const [debugMessages, setDebugMessages] = useState<string[]>([])
-  const [isSaving, setIsSaving] = useState(false)
+  const [isRunning, setIsRunning] = useState(false)
 
   const addDebugMessage = (message: string) => {
     // padding the message to ensure consistent formatting
@@ -55,7 +56,7 @@ export function SavingProgress({ master }: SavingProgressProps) {
     })
 
     try {
-      setIsSaving(true)
+      setIsRunning(true)
       setProgress(0)
       setDebugMessages([])
 
@@ -137,7 +138,41 @@ export function SavingProgress({ master }: SavingProgressProps) {
     } catch (error) {
       addDebugMessage(`Error: ${error instanceof Error ? error.message : 'Unknown error occurred'}`)
     } finally {
-      setIsSaving(false)
+      setIsRunning(false)
+    }
+  }
+
+  const handleDelete = async () => {
+    if (!master.id) {
+      addDebugMessage('No master ID provided for deletion.')
+      return
+    }
+
+    setIsRunning(true)
+    setProgress(0)
+    setDebugMessages([])
+
+    try {
+      addDebugMessage(`Deleting master with ID: ${master.id}...`)
+
+      addDebugMessage(`Getting master with ID: ${master.id}...`)
+      let masterDb = await db_getReleaseByMasterId(master)
+      if (!masterDb) {
+        addDebugMessage(`Master with ID: ${master.id} not found in database.`)
+        return
+      }
+
+      await db_deleteReleaseById(masterDb.id)
+      setProgress(50)
+
+      addDebugMessage(`Master with ID: ${masterDb.id} deleted successfully.`)
+      setProgress(100)
+    } catch (error) {
+      addDebugMessage(
+        `Error deleting master: ${error instanceof Error ? error.message : 'Unknown error'}`
+      )
+    } finally {
+      setIsRunning(false)
     }
   }
 
@@ -173,15 +208,20 @@ export function SavingProgress({ master }: SavingProgressProps) {
       <div className="mt-4 flex flex-col gap-4">
         <Progress value={progress} className="w-full" />
 
-        <div className="flex gap-4">
-          <Button className="w-32" onClick={handleSave} disabled={isSaving}>
-            {isSaving ? 'Saving...' : 'Save Master'}
+        <div className="flex flex-col gap-4">
+          <Button className="w-32" onClick={handleSave} disabled={isRunning}>
+            {isRunning ? 'Saving...' : 'Save Master'}
+          </Button>
+
+          <Button className="w-32" onClick={handleDelete} disabled={isRunning}>
+            {isRunning ? 'Deleting...' : 'Delete Master'}
           </Button>
 
           <Textarea
             value={debugMessages.join('\n')}
-            className="h-64 w-[70vw] flex-1 font-mono text-muted-foreground"
-            style={{ fontSize: '12px' }}
+            rows={10}
+            className="h-[600px] w-[70vw] flex-1 font-mono text-muted-foreground"
+            style={{ fontSize: '12px', height: '400px' }}
             placeholder="Debug messages will appear here..."
             readOnly
           />
