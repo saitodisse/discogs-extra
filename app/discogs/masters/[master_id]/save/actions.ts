@@ -16,7 +16,10 @@ const mergeJsonIfLarger = (original: any, updated: any) => {
   return updatedStr.length > originalStr.length ? updated : original
 }
 
-export async function mergeTracks(originalTracks?: Track[], updatedTracks?: Track[]): Track[] {
+export async function mergeTracks(
+  originalTracks?: Track[],
+  updatedTracks?: Track[]
+): Promise<Track[]> {
   if (!originalTracks && !updatedTracks) return []
   if (!originalTracks) return [...(updatedTracks || [])]
   if (!updatedTracks) return [...originalTracks]
