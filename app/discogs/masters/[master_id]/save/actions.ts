@@ -400,6 +400,9 @@ export const discogs_getReleaseById = async (releaseId: number) => {
   return release
 }
 
+// TODO: use playwright-extra to scrape the credits from the Discogs site
+// https://github.com/berstend/puppeteer-extra/tree/master/packages/playwright-extra
+// use https://www.npmjs.com/package/puppeteer-extra-plugin-stealth
 export const discogsSite_getCredits = async ({ artistId }: { artistId: number }) => {
   if (!artistId) {
     throw new Error('Artist ID is required')
@@ -411,8 +414,8 @@ export const discogsSite_getCredits = async ({ artistId }: { artistId: number })
     discogsId: artistId,
     perPage: 500,
     sortDirection: 'ASC',
-    headers: [{ headerName: 'Acting, Literary & Spoken', headerType: 'CREDIT' }],
-    creditCategory: 'Acting, Literary & Spoken',
+    headers: [{ headerName: 'Credits', headerType: 'CREDIT' }],
+    creditCategory: 'Credits',
     desiredPage: 1,
     artistPages: [],
     creditName: '',
