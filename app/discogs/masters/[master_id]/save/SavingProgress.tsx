@@ -51,7 +51,7 @@ export function SavingProgress({ master }: SavingProgressProps) {
 
     await debug_saveJsonToTmp({
       data: master,
-      filename: `master_${master.id}.json`,
+      filename: `master_${master?.id}.json`,
       lastPath: master.id.toString(),
     })
 
@@ -66,12 +66,20 @@ export function SavingProgress({ master }: SavingProgressProps) {
 
       addDebugMessage(`[masterDb] check or create if master exists on database...`)
       // masterDb: get or create new entry
-      let masterDb = await db_getReleaseByMasterId(master)
-      await debug_saveJsonToTmp({
-        data: masterDb,
-        filename: `masterDb_${masterDb.id}.json`,
-        lastPath: master.id.toString(),
-      })
+      let { data: masterDb, is_first_save } = await db_getReleaseByMasterId(master)
+
+      if (!masterDb) {
+        addDebugMessage(`Master with ID: ${master.id} not found in database, creating new entry...`)
+        await db_saveMasterAction({ master: masterDb, is_first_save })
+        setProgress(15)
+      } else {
+        await debug_saveJsonToTmp({
+          data: masterDb,
+          filename: `masterDb_${masterDb?.id}.json`,
+          lastPath: master.id.toString(),
+        })
+        addDebugMessage(`Master with ID: ${master.id} found in database, updating...`)
+      }
 
       addDebugMessage(`[discogs] fetching all releases from master ${master.id}...`)
       const releasesFromMaster = await discogs_getAllReleasesByMasterId(master.id)
@@ -124,19 +132,23 @@ export function SavingProgress({ master }: SavingProgressProps) {
         lastPath: master.id.toString(),
       })
 
-      const result = await db_saveMasterAction({ releaseIdDb, master: masterDb })
+      const result = await db_saveMasterAction({ master: masterDb, is_first_save: false })
       setProgress(90)
 
       // Complete
       if (result.error) {
-        addDebugMessage(`Error: ${result.error}`)
+        console.error(result.error)
+        addDebugMessage(`[db_saveMasterAction] Error: ${result.error}`)
       } else {
         addDebugMessage(result.message || 'master saved successfully')
         addDebugMessage('all data merged and saved successfully!')
       }
       setProgress(100)
     } catch (error) {
-      addDebugMessage(`Error: ${error instanceof Error ? error.message : 'Unknown error occurred'}`)
+      console.error(error)
+      addDebugMessage(
+        `[general] Error: ${error instanceof Error ? error.message : 'Unknown error occurred'}`
+      )
     } finally {
       setIsRunning(false)
     }
@@ -156,7 +168,7 @@ export function SavingProgress({ master }: SavingProgressProps) {
       addDebugMessage(`Deleting master with ID: ${master.id}...`)
 
       addDebugMessage(`Getting master with ID: ${master.id}...`)
-      let masterDb = await db_getReleaseByMasterId(master)
+      let { data: masterDb } = await db_getReleaseByMasterId(master)
       if (!masterDb) {
         addDebugMessage(`Master with ID: ${master.id} not found in database.`)
         return
@@ -179,7 +191,7 @@ export function SavingProgress({ master }: SavingProgressProps) {
   return (
     <div className="container mx-auto p-4">
       <div className="flex flex-1">
-        <div className="grid gap-6 p-6 md:grid-cols-[100px_1fr]">
+        <div className="grid gap-6 md:grid-cols-[150px_1fr]">
           {/* Album Cover */}
           <div className="relative aspect-square overflow-hidden rounded-lg bg-muted">
             {master.images && master.images[0] ? (
@@ -196,26 +208,28 @@ export function SavingProgress({ master }: SavingProgressProps) {
           </div>
         </div>
 
-        <h1 className="mb-2 mt-6 text-lg">
-          <span className="font-thin">Master: </span>
-          <span className="mr-6 font-mono font-thin">{master?.id}</span>
+        <div className="mb-2 mt-6 flex flex-col text-lg">
+          <span className="font-thin">Master: {master?.id}</span>
+          <span className="mr-6 font-mono font-thin"></span>
           <span className="font-semibold">
             {master?.artists?.[0]?.name} - {master?.title}
           </span>
-        </h1>
+        </div>
       </div>
 
       <div className="mt-4 flex flex-col gap-4">
         <Progress value={progress} className="w-full" />
 
         <div className="flex flex-col gap-4">
-          <Button className="w-32" onClick={handleSave} disabled={isRunning}>
-            {isRunning ? 'Saving...' : 'Save Master'}
-          </Button>
+          <div className="flex space-x-4">
+            <Button className="w-32" onClick={handleSave} disabled={isRunning}>
+              {isRunning ? '...' : 'Save Master'}
+            </Button>
 
-          <Button className="w-32" onClick={handleDelete} disabled={isRunning}>
-            {isRunning ? 'Deleting...' : 'Delete Master'}
-          </Button>
+            <Button className="w-32" onClick={handleDelete} disabled={isRunning}>
+              {isRunning ? '...' : 'Delete Master'}
+            </Button>
+          </div>
 
           <Textarea
             value={debugMessages.join('\n')}

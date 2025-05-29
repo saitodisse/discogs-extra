@@ -12,6 +12,13 @@ import { Card } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { ExternalLink } from 'lucide-react'
 import Link from 'next/link'
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from '@/components/ui/accordion'
+import { Track } from 'disconnect'
 
 export default async function MasterPage({ params }: { params: Promise<{ master_uuid: string }> }) {
   const { master_uuid } = await params
@@ -27,7 +34,13 @@ export default async function MasterPage({ params }: { params: Promise<{ master_
   const releaseResult = await supabase.from('releases').select('*').eq('id', master_uuid).single()
   const master: ReleaseDb = releaseResult.data
 
-  console.log('Master Data:', master)
+  let main_tracks: Track[] = []
+  let extra_tracks: Track[] = []
+
+  if (master?.tracklist_json) {
+    main_tracks = master?.tracklist_json.filter((track) => !track.extra_track)
+    extra_tracks = master?.tracklist_json.filter((track) => track.extra_track)
+  }
 
   return (
     <div className="min-w-5xl mx-auto w-full max-w-5xl p-4">
@@ -43,7 +56,7 @@ export default async function MasterPage({ params }: { params: Promise<{ master_
           <BreadcrumbSeparator />
           <BreadcrumbItem>
             <BreadcrumbPage>
-              {master?.artists_name?.join(', ')} - {master?.title} ({master.master_id})
+              {master?.artists_name?.join(', ')} - {master?.title} ({master?.master_id})
             </BreadcrumbPage>
           </BreadcrumbItem>
         </BreadcrumbList>
@@ -78,6 +91,24 @@ export default async function MasterPage({ params }: { params: Promise<{ master_
                 </span>
               )}
             </div>
+
+            <a
+              href={master.master_id ? `/discogs/masters/${master.master_id}` : '#'}
+              className="text-sm text-primary underline"
+            >
+              discogs (internal)
+              <ExternalLink className="ml-1 inline" size={14} />
+            </a>
+
+            <a
+              href={master.master_id ? `https://www.discogs.com/master/${master.master_id}` : '#'}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-sm text-primary underline"
+            >
+              discogs
+              <ExternalLink className="ml-1 inline" size={14} />
+            </a>
 
             <div className="mb-4">
               {master.artists_name.map((artist, index) => (
@@ -130,67 +161,30 @@ export default async function MasterPage({ params }: { params: Promise<{ master_
             </div>
 
             {/* Tracklist Section */}
-            {master.tracklist_json && master.tracklist_json.length > 0 && (
-              <div className="mb-6">
-                <h2 className="mb-2 text-xl font-semibold">Tracklist</h2>
-                <div className="divide-y divide-muted">
-                  {master.tracklist_json.map((track, index) => {
-                    // Find extra artists for this track
-                    const trackExtraArtists = master.extraartists_json?.filter((artist) =>
-                      artist.roles.some((role) => role.tracks?.includes(track.position))
-                    )
+            <div className="mb-6">
+              <h2 className="mb-2 text-xl font-semibold">Main Tracklist</h2>
+              <div className="divide-y divide-muted">
+                {main_tracks?.map((track, index) => <TrackItem key={index} track={track} />)}
+              </div>
+            </div>
 
-                    return (
-                      <div key={index} className="py-2">
-                        <div className="flex items-start justify-between">
-                          <div className="flex flex-grow flex-col">
-                            <div className="flex items-center">
-                              <span className="mr-2 w-8 font-mono text-muted-foreground">
-                                {track.position}
-                              </span>
-                              <span className="font-medium">{track.title}</span>
-                              {track.duration && (
-                                <span className="ml-2 text-muted-foreground">
-                                  ({track.duration})
-                                </span>
-                              )}
-                            </div>
-                            {/* Track Extra Artists */}
-                            {trackExtraArtists && trackExtraArtists.length > 0 && (
-                              <div className="ml-10 text-sm text-muted-foreground">
-                                {trackExtraArtists.map((artist, artistIndex) => (
-                                  <div key={artistIndex} className="flex items-center gap-1">
-                                    {artist.roles
-                                      .filter((role) => role.tracks?.includes(track.position))
-                                      .map((role, roleIndex) => (
-                                        <div key={roleIndex} className="flex items-center">
-                                          <span className="text-muted-foreground">
-                                            {role.role}:
-                                          </span>
-                                          <Link
-                                            href={`/discogs/artists/${artist.id}`}
-                                            className="ml-1 text-blue-600 hover:underline"
-                                          >
-                                            {artist.name}
-                                          </Link>
-                                          {artist.anv && (
-                                            <span className="ml-1 text-muted-foreground">
-                                              ({artist.anv})
-                                            </span>
-                                          )}
-                                          {roleIndex < artist.roles.length - 1 && ', '}
-                                        </div>
-                                      ))}
-                                  </div>
-                                ))}
-                              </div>
-                            )}
-                          </div>
-                        </div>
+            {/* extra tracks */}
+            {extra_tracks.length > 0 && (
+              <div className="mb-6">
+                <Accordion type="single" collapsible>
+                  <AccordionItem value="item-1">
+                    <AccordionTrigger>
+                      <h2 className="mb-2 text-xl font-semibold">Extra Tracks</h2>
+                    </AccordionTrigger>
+                    <AccordionContent>
+                      <div className="divide-y divide-muted">
+                        {extra_tracks?.map((track, index) => (
+                          <TrackItem key={index} track={track} />
+                        ))}
                       </div>
-                    )
-                  })}
-                </div>
+                    </AccordionContent>
+                  </AccordionItem>
+                </Accordion>
               </div>
             )}
 
@@ -294,6 +288,54 @@ export default async function MasterPage({ params }: { params: Promise<{ master_
           </div>
         </div>
       </Card>
+    </div>
+  )
+}
+
+export function TrackItem({ track }: { track: ReleaseDb['tracklist_json'][0] }) {
+  return (
+    <div className="py-2">
+      <div className="flex items-start justify-between">
+        <div className="flex flex-grow flex-col">
+          <div className="flex items-center">
+            <span className="mr-2 w-8 font-mono text-muted-foreground">{track.position}</span>
+            <span className="font-medium">{track.title}</span>
+            {track.duration && (
+              <span className="ml-2 text-muted-foreground">({track.duration})</span>
+            )}
+          </div>
+          {/* Track Extra Artists */}
+          {track.extraartists && track.extraartists.length > 0 && (
+            <div className="ml-10 text-sm text-muted-foreground">
+              {track.extraartists.map((artist, artistIndex: number) => (
+                <div
+                  key={artistIndex}
+                  className="*: flex items-center gap-1 text-xs text-muted-foreground/70 hover:text-muted-foreground"
+                >
+                  {artist?.role && <span className="">{artist.role}:</span>}
+                  <Link
+                    href={`/discogs/artists/${artist.id}`}
+                    className="text-foreground/70 hover:underline"
+                  >
+                    {artist.name}
+                  </Link>
+                </div>
+              ))}
+            </div>
+          )}
+          {/* Track Extra Info */}
+          {track.is_on_master && (
+            <div className="ml-10 text-xs text-muted-foreground text-yellow-700">
+              <span className="italic">master release</span>
+            </div>
+          )}
+          {track.extra_track && (
+            <div className="ml-10 text-xs text-muted-foreground text-purple-700">
+              <span className="italic">extra track</span>
+            </div>
+          )}
+        </div>
+      </div>
     </div>
   )
 }

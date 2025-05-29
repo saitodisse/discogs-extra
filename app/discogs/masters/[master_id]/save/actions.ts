@@ -27,7 +27,9 @@ export async function mergeTracks(
   const mergedTracks = [...originalTracks]
 
   updatedTracks.forEach((updatedTrack) => {
-    const existingIndex = mergedTracks.findIndex((track) => track.title === updatedTrack.title)
+    const existingIndex = mergedTracks.findIndex(
+      (track) => track.title === updatedTrack.title || track.position === updatedTrack.position
+    )
 
     if (existingIndex === -1) {
       // New track, add it
@@ -42,11 +44,24 @@ export async function mergeTracks(
     } else {
       // Existing track, check if we should update it
       const existingTrack = mergedTracks[existingIndex]
-      const hasMoreExtraArtists = (track: Track) =>
-        (track.extraartists?.length || 0) > (existingTrack.extraartists?.length || 0)
 
-      if (hasMoreExtraArtists(updatedTrack)) {
-        mergedTracks[existingIndex] = updatedTrack
+      // get JSON size from extraartists
+      const originalJsonSize = JSON.stringify(existingTrack?.extraartists || '{}')?.length
+      const updatedJsonSize = JSON.stringify(updatedTrack?.extraartists || '{}')?.length
+      if (updatedJsonSize > originalJsonSize) {
+        // Update existing track with larger JSON size
+        mergedTracks[existingIndex] = {
+          ...existingTrack,
+          extraartists: updatedTrack.extraartists,
+        }
+      }
+
+      // merge extra artists if they exist
+      if (updatedTrack.extraartists && updatedTrack.extraartists.length > 0) {
+        updatedTrack.extraartists = [
+          ...(existingTrack.extraartists || []),
+          ...(updatedTrack.extraartists || []),
+        ]
       }
     }
   })
@@ -218,11 +233,11 @@ export const db_getReleasesByMasterId = async (masterId: number) => {
 }
 
 export const db_saveMasterAction = async ({
-  releaseIdDb, // This is the ID of the release in your database, if you are updating an existing one
   master,
+  is_first_save = false, // Optional, defaults to false
 }: {
-  releaseIdDb: string // ID of the release in your database, used for updates
   master?: ReleaseDb // Optional, can be used for additional data if needed
+  is_first_save?: boolean // Optional, defaults to false
 }) => {
   const supabase = await createClient()
 
@@ -237,19 +252,18 @@ export const db_saveMasterAction = async ({
     throw new Error('Master release data is required')
   }
 
-  // Try to get existing data first
-  const { data: existingData } = await supabase
-    .from('releases')
-    .select('*')
-    .eq('id', releaseIdDb)
-    .single()
+  // add is_on_master field to each track
+  if (master.tracklist_json && is_first_save) {
+    master.tracklist_json = master.tracklist_json.map((track) => ({
+      ...track,
+      is_on_master: true, // Mark all tracks as part of the master
+      extra_track: false, // Ensure extra_track is false for master tracks
+      // If you want to keep the original extra_track logic, you can modify this line
+      // extra_track: track.extra_track || false, // Keep original extra_track logic
+    }))
+  }
 
-  const { error } = await supabase.from('releases').upsert(
-    {
-      ...master,
-    },
-    { onConflict: 'id' }
-  )
+  const { error } = await supabase.from('releases').upsert(master, { onConflict: 'id' })
 
   if (error) {
     console.error(error.code + ' ' + error.message)
@@ -265,7 +279,12 @@ export const db_saveMasterAction = async ({
   }
 }
 
-export const db_getReleaseByMasterId = async (master: MasterRelease): Promise<ReleaseDb> => {
+export const db_getReleaseByMasterId = async (
+  master: MasterRelease
+): Promise<{
+  is_first_save: boolean
+  data: ReleaseDb
+}> => {
   const supabase = await createClient()
   const { data, error } = await supabase
     .from('releases')
@@ -290,38 +309,54 @@ export const db_getReleaseByMasterId = async (master: MasterRelease): Promise<Re
     throw new Error('User must be authenticated to save a master')
   }
 
+  let is_first_save = false
   if (!data) {
-    // create a new
+    // set is_on_master to true for all tracks
+    master.tracklist = master.tracklist.map((track) => ({
+      ...track,
+      is_on_master: true, // Mark all tracks as part of the master
+      extra_track: false, // Ensure extra_track is false for master tracks
+      // If you want to keep the original extra_track logic, you can modify this line
+      // extra_track: track.extra_track || false, // Keep original extra_track logic
+    }))
+
     return {
-      id: uuid(),
-      owner_id: user.id,
-      owner_email: user.email || '',
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
-      master_id: master.id,
-      releases_ids: master?.main_release ? [master.main_release] : [],
-      artists_id: master.artists.map((artist) => artist.id),
-      artists_name: master.artists.map((artist) => artist.name),
-      title: master.title,
-      // status: undefined, // status is not provided in the master release
-      data_quality: master.data_quality,
-      // country: undefined, // country is not provided in the master release
-      year_of_release: master.year,
-      // notes: undefined, // notes are not provided in the master release
-      companies_json: [],
-      extraartists_json: [],
-      formats_json: [],
-      genres: master.genres || [],
-      styles: master.styles || [],
-      identifiers_json: [],
-      images_json: master.images || [],
-      series_json: [],
-      videos_json: master.videos || [],
-      tracklist_json: master.tracklist || [],
+      data: {
+        // Create a new release object with the master data}
+        id: uuid(),
+        owner_id: user.id,
+        owner_email: user.email || '',
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+        master_id: master.id,
+        releases_ids: master?.main_release ? [master.main_release] : [],
+        artists_id: master.artists.map((artist) => artist.id),
+        artists_name: master.artists.map((artist) => artist.name),
+        title: master.title,
+        // status: undefined, // status is not provided in the master release
+        data_quality: master.data_quality,
+        // country: undefined, // country is not provided in the master release
+        year_of_release: master.year,
+        // notes: undefined, // notes are not provided in the master release
+        companies_json: [],
+        extraartists_json: [],
+        formats_json: [],
+        genres: master.genres || [],
+        styles: master.styles || [],
+        identifiers_json: [],
+        images_json: master.images || [],
+        series_json: [],
+        videos_json: master.videos || [],
+        tracklist_json: master.tracklist || [],
+      },
+      is_first_save: true,
     }
   }
 
-  return data
+  return {
+    is_first_save,
+    data,
+  }
 }
 
 export const db_deleteReleaseById = async (releaseId: string) => {

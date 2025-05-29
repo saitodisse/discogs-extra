@@ -1,10 +1,23 @@
-import type { NextConfig } from "next";
+import type { NextConfig } from 'next'
 
 const nextConfig: NextConfig = {
   /* add i.discogs.com */
   images: {
-    domains: ["i.discogs.com", "st.discogs.com"],
+    remotePatterns: [
+      {
+        protocol: 'https',
+        hostname: 'i.discogs.com',
+        port: '',
+        pathname: '/**',
+      },
+      {
+        protocol: 'https',
+        hostname: 'st.discogs.com',
+        port: '',
+        pathname: '/**',
+      },
+    ],
   },
-};
+}
 
-export default nextConfig;
+export default nextConfig

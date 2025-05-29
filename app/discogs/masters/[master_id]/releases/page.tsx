@@ -43,9 +43,6 @@ export default async function ReleasesPage({ params, searchParams }: PageProps) 
   const view = viewParam === 'grid' ? 'grid' : 'list'
   const { master, releases, error } = await getDiscogsData(masterId, page)
 
-  console.log('Master:', master)
-  console.log('Releases:', releases)
-
   // convert releases to the expected format
   if (releases && releases.versions) {
     releases.versions = releases.versions.map((version: any) => ({

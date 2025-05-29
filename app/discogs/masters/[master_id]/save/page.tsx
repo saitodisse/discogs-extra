@@ -1,5 +1,6 @@
 import { Client } from 'disconnect'
 import { SavingProgress } from './SavingProgress'
+import { BreadcrumbDiscogs } from '@/app/discogs/BreadcrumbDiscogs'
 
 export default async function SaveMasterPage({
   params,
@@ -31,6 +32,12 @@ export default async function SaveMasterPage({
 
   return (
     <div className="container mx-auto p-4">
+      <BreadcrumbDiscogs
+        entity={{
+          type: 'master',
+          data: master,
+        }}
+      />
       <SavingProgress master={master} />
     </div>
   )

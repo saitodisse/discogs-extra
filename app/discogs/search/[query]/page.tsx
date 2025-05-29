@@ -71,8 +71,6 @@ export default async function SearchPage({
       sort_order: 'asc',
     })
 
-    console.log('Search Response:', searchResults)
-
     pagination = {
       pages: searchResults.pagination?.pages || 1,
       items: searchResults.pagination?.items || 0,

@@ -40,8 +40,6 @@ export default async function ArtistPage({
     sort_order: 'asc',
   })
 
-  console.log('Search response:', searchResponse)
-
   return (
     <div className="container mx-auto px-4">
       <BreadcrumbDiscogs

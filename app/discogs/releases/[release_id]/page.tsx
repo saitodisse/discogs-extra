@@ -24,8 +24,6 @@ export default async function ReleasePage({ params }: { params: Promise<{ releas
   try {
     const release = await client.database().getRelease(parseInt(release_id))
 
-    console.log('Fetched release:', release)
-
     return (
       <div className="container mx-auto px-4">
         <BreadcrumbDiscogs
