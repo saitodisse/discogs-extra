@@ -4,6 +4,7 @@ import { createClient } from '@/utils/supabase/server'
 import { Client, MasterRelease, Release, Track } from 'disconnect'
 import { ReleaseDb } from '../../../../../types/ReleaseDb'
 import { v4 as uuid } from 'uuid'
+import { GetCreditsResponse } from '@/types/discogs_site/GetCreditsResponse'
 
 // Helper functions for merging data
 const mergeJsonIfLarger = (original: any, updated: any) => {
@@ -397,6 +398,82 @@ export const discogs_getReleaseById = async (releaseId: number) => {
   const release = await client.database().getRelease(releaseId)
 
   return release
+}
+
+export const discogsSite_getCredits = async ({ artistId }: { artistId: number }) => {
+  if (!artistId) {
+    throw new Error('Artist ID is required')
+  }
+
+  const operationName = 'ArtistDiscographyData'
+
+  const variables = {
+    discogsId: artistId,
+    perPage: 500,
+    sortDirection: 'ASC',
+    headers: [{ headerName: 'Acting, Literary & Spoken', headerType: 'CREDIT' }],
+    creditCategory: 'Acting, Literary & Spoken',
+    desiredPage: 1,
+    artistPages: [],
+    creditName: '',
+    formats: [],
+    labels: [],
+    years: [],
+    countries: [],
+    anvs: [],
+    search: '',
+    releaseTypes: [
+      'Albums',
+      'Singles & EPs',
+      'Compilations',
+      'Videos',
+      'Miscellaneous',
+      'Mixes',
+      'DJ Mixes',
+    ],
+  }
+
+  const extensions = {
+    persistedQuery: {
+      version: 1,
+      sha256Hash: 'c6edf5e07eee754d5703296fb090f54bef71630cf505382756f7916f3cfe6884',
+    },
+  }
+
+  const response = await fetch(
+    `https://www.discogs.com/service/catalog/api/graphql?operationName=${operationName}&variables=${encodeURIComponent(
+      JSON.stringify(variables)
+    )}&extensions=${encodeURIComponent(JSON.stringify(extensions))}`,
+    {
+      headers: {
+        accept: '*/*',
+        'accept-language': 'pt-BR,pt;q=0.9',
+        'apollographql-client-name': 'release-page-client',
+        'content-type': 'application/json',
+        priority: 'u=1, i',
+        'sec-ch-ua': '"Chromium";v="136", "Google Chrome";v="136", "Not.A/Brand";v="99"',
+        'sec-ch-ua-mobile': '?0',
+        'sec-ch-ua-platform': '"Windows"',
+        'sec-fetch-dest': 'empty',
+        'sec-fetch-mode': 'cors',
+        'sec-fetch-site': 'same-origin',
+        cookie:
+          '__cf_bm=EXyQ38n5xW5cVCzhFNp9MqRRPk14o9IlfCE86LwV6ZI-1748557667-1.0.1.1-lAwblUzt8.6jOj7DhvbHy2cT4ePkbXtmlHqHyKwLKaXPIgS.47RcjATxig.s5YWu16by4m3QUZhHIOLIrVl.9DFAl1TwsnzS..VN1XmYM14; ad-test-group=a; OptanonAlertBoxClosed=2025-05-29T22:27:47.745Z; OptanonConsent=isGpcEnabled=0&datestamp=Thu+May+29+2025+19%3A27%3A47+GMT-0300+(Hor%C3%A1rio+Padr%C3%A3o+de+Bras%C3%ADlia)&version=202503.1.0&browserGpcFlag=0&isIABGlobal=false&hosts=&consentId=7f1e2166-520a-4dab-b2f5-ab00209753cc&interactionCount=1&isAnonUser=1&landingPath=NotLandingPage&groups=C0001%3A1%2CC0004%3A0%2CC0002%3A0%2CC0005%3A0%2CC0003%3A0&intType=3; dsjspersist2=%7B%22artist_page_view%22%3A%22textWithCovers%22%2C%22artist_page_show_number%22%3A500%7D; _dd_s=rum=0&expire=1748558638680',
+        Referer:
+          'https://www.discogs.com/artist/449858-Zuza-Homem-de-Mello?superFilter=Acting%2C+Literary+%26+Spoken',
+        'Referrer-Policy': 'strict-origin-when-cross-origin',
+      },
+      body: null,
+      method: 'GET',
+    }
+  )
+
+  if (!response.ok) {
+    throw new Error(`Failed to fetch credits: ${response.statusText}`)
+  }
+
+  const data: GetCreditsResponse = await response.json()
+  return data
 }
 
 export const debug_saveJsonToTmp = async ({

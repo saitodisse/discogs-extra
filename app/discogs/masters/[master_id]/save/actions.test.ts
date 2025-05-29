@@ -1,5 +1,5 @@
 import { ReleaseDb } from '@/types/ReleaseDb'
-import { mergeTracks } from './actions'
+import { debug_saveJsonToTmp, discogsSite_getCredits, mergeTracks } from './actions'
 import { Track } from 'disconnect'
 
 describe('mergeTracks', () => {
@@ -260,5 +260,21 @@ describe('mergeTracks', () => {
     ]
 
     expect(await mergeTracks(originalTracks, updatedTracks)).toEqual(originalTracks)
+  })
+})
+
+describe('discogsSite_getCredits', () => {
+  it('should GET json directly from Discogs Site', async () => {
+    const credits = await discogsSite_getCredits({
+      artistId: 449858, // Zuza Homem de Mello
+    })
+
+    await debug_saveJsonToTmp({
+      data: credits,
+      filename: 'zuza_homem_de_mello_credits.json',
+      lastPath: 'discogs-site_getCredits',
+    })
+
+    expect(credits).toBeDefined()
   })
 })
