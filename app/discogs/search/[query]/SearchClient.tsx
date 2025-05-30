@@ -1,8 +1,10 @@
 'use client'
 
 import { useQueryState } from 'nuqs'
+import { useState, useCallback } from 'react'
 import { Toggle } from '@/components/ui/toggle'
-import { GridIcon, ListIcon } from 'lucide-react'
+import { Button } from '@/components/ui/button'
+import { GridIcon, ListIcon, SaveIcon } from 'lucide-react'
 import {
   Table,
   TableBody,
@@ -21,6 +23,8 @@ import {
   DatabaseSearchReleaseItem,
   DatabaseSearchArtistItem,
 } from 'disconnect'
+import { Checkbox } from '@/components/ui/checkbox'
+import { useRouter } from 'next/navigation'
 
 // Helper Components
 const NoImagePlaceholder = ({ className }: { className?: string }) => (
@@ -103,8 +107,29 @@ const ReleaseGridItem = ({ result }: { result: DatabaseSearchReleaseItem }) => (
 )
 
 // List Items
-const MasterListItem = ({ result }: { result: DatabaseSearchMasterItem }) => (
-  <TableRow>
+interface ListItemProps {
+  result: DatabaseSearchMasterItem | DatabaseSearchReleaseItem
+  selected: boolean
+  onSelect: (e: React.MouseEvent) => void
+}
+
+const MasterListItem = ({
+  result,
+  selected,
+  onSelect,
+}: ListItemProps & { result: DatabaseSearchMasterItem }) => (
+  <TableRow className={selected ? 'bg-muted/50' : ''}>
+    <TableCell className="w-[20px]">
+      <Checkbox
+        checked={selected}
+        onCheckedChange={() => onSelect({ shiftKey: false } as React.MouseEvent)}
+        onClick={(e: React.MouseEvent) => {
+          e.preventDefault() // Prevent double triggering with onCheckedChange
+          onSelect(e)
+        }}
+      />
+    </TableCell>
+
     <TableCell className="w-[100px]">
       {result.thumb ? (
         <Image
@@ -143,8 +168,22 @@ const MasterListItem = ({ result }: { result: DatabaseSearchMasterItem }) => (
   </TableRow>
 )
 
-const ReleaseListItem = ({ result }: { result: DatabaseSearchReleaseItem }) => (
-  <TableRow>
+const ReleaseListItem = ({
+  result,
+  selected,
+  onSelect,
+}: ListItemProps & { result: DatabaseSearchReleaseItem }) => (
+  <TableRow className={selected ? 'bg-muted/50' : ''}>
+    <TableCell className="w-[20px]">
+      <Checkbox
+        checked={selected}
+        onCheckedChange={() => onSelect({ shiftKey: false } as React.MouseEvent)}
+        onClick={(e: React.MouseEvent) => {
+          e.preventDefault() // Prevent double triggering with onCheckedChange
+          onSelect(e)
+        }}
+      />
+    </TableCell>
     <TableCell className="w-[100px]">
       {result.thumb ? (
         <Image
@@ -185,6 +224,62 @@ interface SearchClientProps {
 
 export function SearchClient({ results, type, initialView = 'list' }: SearchClientProps) {
   const [view, setView] = useQueryState('view', { defaultValue: initialView })
+  const [selectedItems, setSelectedItems] = useState<Set<number>>(new Set())
+  const [lastSelectedId, setLastSelectedId] = useState<number | null>(null)
+  const router = useRouter()
+
+  const handleSelectItem = useCallback(
+    (id: number, shiftKey: boolean) => {
+      setSelectedItems((prev) => {
+        const newSelection = new Set(prev)
+
+        if (shiftKey && lastSelectedId !== null) {
+          const currentIndex = results.findIndex((item) => item.id === id)
+          const lastIndex = results.findIndex((item) => item.id === lastSelectedId)
+
+          if (currentIndex !== -1 && lastIndex !== -1) {
+            const start = Math.min(currentIndex, lastIndex)
+            const end = Math.max(currentIndex, lastIndex)
+
+            for (let i = start; i <= end; i++) {
+              if (prev.has(results[i].id)) {
+                newSelection.delete(results[i].id)
+              } else {
+                newSelection.add(results[i].id)
+              }
+            }
+          }
+        } else {
+          if (newSelection.has(id)) {
+            newSelection.delete(id)
+          } else {
+            newSelection.add(id)
+          }
+        }
+
+        return newSelection
+      })
+      setLastSelectedId(id)
+    },
+    [results, lastSelectedId]
+  )
+
+  const handleSelectAll = useCallback(
+    (checked: boolean) => {
+      setSelectedItems((prev) => {
+        if (checked) {
+          return new Set(results.map((item) => item.id))
+        }
+        return new Set()
+      })
+    },
+    [results]
+  )
+
+  const handleSaveSelected = useCallback(() => {
+    const query = Array.from(selectedItems).join(',')
+    router.push(`/discogs/masters/batch-saving?ids=${query}`)
+  }, [selectedItems])
 
   if (!results.length) {
     return <div className="text-muted-foreground">No results found</div>
@@ -193,13 +288,22 @@ export function SearchClient({ results, type, initialView = 'list' }: SearchClie
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <Toggle
-          aria-label="Toggle view"
-          pressed={view === 'grid'}
-          onPressedChange={(pressed) => setView(pressed ? 'grid' : 'list')}
-        >
-          {view === 'grid' ? <ListIcon className="h-4 w-4" /> : <GridIcon className="h-4 w-4" />}
-        </Toggle>
+        <div className="flex gap-2">
+          <Toggle
+            aria-label="Toggle view"
+            pressed={view === 'grid'}
+            onPressedChange={(pressed) => setView(pressed ? 'grid' : 'list')}
+          >
+            {view === 'grid' ? <ListIcon className="h-4 w-4" /> : <GridIcon className="h-4 w-4" />}
+          </Toggle>
+
+          {selectedItems.size > 0 && (
+            <Button size="sm" onClick={handleSaveSelected} className="flex items-center gap-2">
+              <SaveIcon className="h-4 w-4" />
+              Save ({selectedItems.size})
+            </Button>
+          )}
+        </div>
       </div>
 
       {view === 'grid' ? (
@@ -218,6 +322,14 @@ export function SearchClient({ results, type, initialView = 'list' }: SearchClie
           <Table>
             <TableHeader>
               <TableRow>
+                <TableHead>
+                  <Checkbox
+                    aria-label="Select all"
+                    className="h-4 w-4"
+                    checked={selectedItems.size > 0 && selectedItems.size === results.length}
+                    onCheckedChange={(checked) => handleSelectAll(checked === true)}
+                  />
+                </TableHead>
                 <TableHead>Image</TableHead>
                 <TableHead>Title</TableHead>
                 <TableHead>Year</TableHead>
@@ -237,11 +349,21 @@ export function SearchClient({ results, type, initialView = 'list' }: SearchClie
             <TableBody>
               {type === 'master' &&
                 results.map((result) => (
-                  <MasterListItem key={result.id} result={result as DatabaseSearchMasterItem} />
+                  <MasterListItem
+                    key={result.id}
+                    result={result as DatabaseSearchMasterItem}
+                    selected={selectedItems.has(result.id)}
+                    onSelect={(e) => handleSelectItem(result.id, e.shiftKey)}
+                  />
                 ))}
               {type === 'release' &&
                 results.map((result) => (
-                  <ReleaseListItem key={result.id} result={result as DatabaseSearchReleaseItem} />
+                  <ReleaseListItem
+                    key={result.id}
+                    result={result as DatabaseSearchReleaseItem}
+                    selected={selectedItems.has(result.id)}
+                    onSelect={(e) => handleSelectItem(result.id, e.shiftKey)}
+                  />
                 ))}
             </TableBody>
           </Table>
