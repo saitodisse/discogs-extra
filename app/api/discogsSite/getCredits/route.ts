@@ -4,6 +4,7 @@ import { NextRequest } from 'next/server'
 import { GetCreditsResponse } from '@/types/discogs_site/GetCreditsResponse'
 
 export async function GET(request: NextRequest) {
+  // TODO: use playwright to get the credits from the Discogs site
   const searchParams = request.nextUrl.searchParams
   const artistId = searchParams.get('artistId')
 
