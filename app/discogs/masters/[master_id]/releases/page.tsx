@@ -2,13 +2,14 @@ import { Client } from 'disconnect'
 import { ReleasesClient } from './ReleasesClient'
 import 'server-only'
 import { BreadcrumbDiscogs } from '@/app/discogs/BreadcrumbDiscogs'
+import Link from 'next/link'
 
 interface PageProps {
   params: Promise<{ master_id: string }>
   searchParams: Promise<{ [key: string]: string }>
 }
 
-async function getDiscogsData(masterId: string, page: number) {
+export async function getDiscogsData(masterId: string, page: number) {
   if (!process.env.DISCOGS_CONSUMER_KEY || !process.env.DISCOGS_CONSUMER_SECRET) {
     return {
       error: 'Missing required API credentials. Please check your environment variables.',
@@ -74,6 +75,11 @@ export default async function ReleasesPage({ params, searchParams }: PageProps) 
         initialView={view}
         initialPage={page}
       />
+      <div className="mt-0 flex w-full justify-end pr-8 text-muted-foreground">
+        <Link href={`/discogs/masters/${masterId}/releases/json`} passHref>
+          <button className="ml-2 text-right text-xs underline">View JSON</button>
+        </Link>
+      </div>
     </>
   )
 }

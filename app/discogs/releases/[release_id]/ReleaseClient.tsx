@@ -47,19 +47,28 @@ export function ReleaseClient({ release }: ReleaseClientProps) {
         <div>
           <h1 className="mb-2 text-3xl font-bold">{release.title}</h1>
 
-          {release.uri && (
-            <div className="mb-4 font-thin">
-              <a
-                href={release.uri}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-sm text-primary underline"
-              >
-                discogs
-                <ExternalLink className="ml-1 inline" size={14} />
-              </a>
-            </div>
-          )}
+          <div className="flex items-baseline space-x-2">
+            {release.uri && (
+              <div className="mb-4 font-thin">
+                <a
+                  href={release.uri}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-sm text-primary underline"
+                >
+                  discogs
+                  <ExternalLink className="ml-1 inline" size={14} />
+                </a>
+              </div>
+            )}
+
+            <Link
+              href={`/discogs/releases/${release.id}/json`}
+              className="mb-4 inline-block text-xs text-primary/60 underline hover:text-primary/90"
+            >
+              JSON
+            </Link>
+          </div>
 
           <div className="mb-4">
             {release.artists &&

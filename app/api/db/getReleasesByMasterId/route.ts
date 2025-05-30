@@ -1,14 +1,14 @@
 'use server'
 
 import { createClient } from '@/utils/supabase/server'
-import { NextRequest } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server'
 
-export async function GET(request: NextRequest) {
+export async function GET(request: NextRequest): Promise<NextResponse> {
   const searchParams = request.nextUrl.searchParams
   const masterId = searchParams.get('masterId')
 
   if (!masterId) {
-    return Response.json({ error: 'Master ID is required' }, { status: 400 })
+    return NextResponse.json({ error: 'Master ID is required' }, { status: 400 })
   }
 
   const supabase = await createClient()
@@ -20,8 +20,8 @@ export async function GET(request: NextRequest) {
 
   if (error) {
     console.error(error.code + ' ' + error.message)
-    return Response.json({ error: 'Error fetching release' }, { status: 500 })
+    return NextResponse.json({ error: 'Error fetching release' }, { status: 500 })
   }
 
-  return Response.json(data)
+  return NextResponse.json(data)
 }

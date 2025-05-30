@@ -1,11 +1,12 @@
 // /masters/[master_id]/json
 import { ReleaseDb } from '@/types/ReleaseDb'
 import { createClient } from '@/utils/supabase/server'
+import { NextRequest, NextResponse } from 'next/server'
 
 export async function GET(
-  request: Request,
+  request: NextRequest,
   { params }: { params: Promise<{ master_id: string }> }
-) {
+): Promise<NextResponse> {
   const { master_id } = await params
   const supabase = await createClient()
   const {
@@ -13,7 +14,7 @@ export async function GET(
   } = await supabase.auth.getUser()
 
   if (!user) {
-    return <div className="container mx-auto p-4">You must be signed in to view this page.</div>
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
   const releaseResult = await supabase
     .from('releases')
@@ -22,7 +23,7 @@ export async function GET(
     .single()
   const master: ReleaseDb = releaseResult.data
 
-  return Response.json(master, {
+  return NextResponse.json(master, {
     headers: {
       'Content-Type': 'application/json',
     },

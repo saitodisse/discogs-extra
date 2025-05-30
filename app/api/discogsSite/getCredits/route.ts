@@ -1,15 +1,15 @@
 'use server'
 
-import { NextRequest } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server'
 import { GetCreditsResponse } from '@/types/discogs_site/GetCreditsResponse'
 
-export async function GET(request: NextRequest) {
+export async function GET(request: NextRequest): Promise<NextResponse> {
   // TODO: use playwright to get the credits from the Discogs site
   const searchParams = request.nextUrl.searchParams
   const artistId = searchParams.get('artistId')
 
   if (!artistId) {
-    return Response.json({ error: 'Artist ID is required' }, { status: 400 })
+    return NextResponse.json({ error: 'Artist ID is required' }, { status: 400 })
   }
 
   const operationName = 'ArtistDiscographyData'
@@ -71,16 +71,16 @@ export async function GET(request: NextRequest) {
     )
 
     if (!response.ok) {
-      return Response.json(
+      return NextResponse.json(
         { error: `Failed to fetch credits: ${response.statusText}` },
         { status: response.status }
       )
     }
 
     const data: GetCreditsResponse = await response.json()
-    return Response.json(data)
+    return NextResponse.json(data)
   } catch (error) {
     console.error('Error fetching credits:', error)
-    return Response.json({ error: 'Failed to fetch credits from Discogs' }, { status: 500 })
+    return NextResponse.json({ error: 'Failed to fetch credits from Discogs' }, { status: 500 })
   }
 }

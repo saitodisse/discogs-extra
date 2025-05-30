@@ -3,13 +3,14 @@
 import { createClient } from '@/utils/supabase/server'
 import { MasterRelease } from 'disconnect'
 import { v4 as uuid } from 'uuid'
+import { NextRequest, NextResponse } from 'next/server'
 
-export async function POST(request: Request) {
+export async function POST(request: NextRequest): Promise<NextResponse> {
   const body = await request.json()
   const { master } = body as { master: MasterRelease }
 
   if (!master) {
-    return Response.json({ error: 'Master release data is required' }, { status: 400 })
+    return NextResponse.json({ error: 'Master release data is required' }, { status: 400 })
   }
 
   const supabase = await createClient()
@@ -20,7 +21,7 @@ export async function POST(request: Request) {
     .single()
 
   if (error && error?.code !== 'PGRST116') {
-    return Response.json(
+    return NextResponse.json(
       {
         error:
           'Error fetching release by master ID:' +
@@ -36,7 +37,10 @@ export async function POST(request: Request) {
     data: { user },
   } = await supabase.auth.getUser()
   if (!user) {
-    return Response.json({ error: 'User must be authenticated to save a master' }, { status: 401 })
+    return NextResponse.json(
+      { error: 'User must be authenticated to save a master' },
+      { status: 401 }
+    )
   }
 
   let is_first_save = false
@@ -48,7 +52,7 @@ export async function POST(request: Request) {
       extra_track: false,
     }))
 
-    return Response.json({
+    return NextResponse.json({
       data: {
         id: uuid(),
         owner_id: user.id,
@@ -77,7 +81,7 @@ export async function POST(request: Request) {
     })
   }
 
-  return Response.json({
+  return NextResponse.json({
     is_first_save,
     data,
   })

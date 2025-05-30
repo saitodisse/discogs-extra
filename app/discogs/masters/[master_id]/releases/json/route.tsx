@@ -1,5 +1,6 @@
 import { Client } from 'disconnect'
 import { NextRequest, NextResponse } from 'next/server'
+import { getDiscogsData } from '../page'
 
 export async function GET(
   request: NextRequest,
@@ -13,11 +14,9 @@ export async function GET(
     consumerSecret: process.env.DISCOGS_CONSUMER_SECRET,
   })
 
-  const master = await client.database().getMaster(parseInt(master_id))
+  const releaseVersions = await client
+    .database()
+    .getMasterVersions(parseInt(master_id), { page: 1, per_page: 500 })
 
-  return NextResponse.json(master, {
-    headers: {
-      'Content-Type': 'application/json',
-    },
-  })
+  return NextResponse.json({ releases: releaseVersions })
 }

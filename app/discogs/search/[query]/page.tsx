@@ -70,9 +70,19 @@ export default async function SearchPage({
     <div className="container mx-auto p-4">
       <SearchInput initialQuery={decodeURIComponent(query)} initialType={type} />
 
-      <h1 className="mb-6 mt-8 italic">
-        Search Results for "{decodeURIComponent(query)}" ({searchResults.pagination.items} items)
-      </h1>
+      <div className="flex items-baseline space-x-2 text-sm">
+        <h1 className="mb-6 mt-8 italic">
+          Search Results for "{decodeURIComponent(query)}" ({searchResults.pagination.items} items)
+        </h1>
+        <Link
+          href={`/discogs/search/${encodeURIComponent(query)}/json?page=${pageStr}${
+            type ? `&type=${type}` : ''
+          }`}
+          className="text-sm hover:underline"
+        >
+          JSON
+        </Link>
+      </div>
 
       <SearchClient
         results={searchResults.results}

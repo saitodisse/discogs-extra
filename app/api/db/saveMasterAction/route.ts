@@ -2,8 +2,9 @@
 
 import { createClient } from '@/utils/supabase/server'
 import { ReleaseDb } from '@/types/ReleaseDb'
+import { NextRequest, NextResponse } from 'next/server'
 
-export async function POST(request: Request) {
+export async function POST(request: NextRequest): Promise<NextResponse> {
   const body = await request.json()
   const { master, is_first_save = false } = body as {
     master?: ReleaseDb
@@ -16,11 +17,14 @@ export async function POST(request: Request) {
     data: { user },
   } = await supabase.auth.getUser()
   if (!user) {
-    return Response.json({ error: 'User must be authenticated to save a master' }, { status: 401 })
+    return NextResponse.json(
+      { error: 'User must be authenticated to save a master' },
+      { status: 401 }
+    )
   }
 
   if (!master) {
-    return Response.json({ error: 'Master release data is required' }, { status: 400 })
+    return NextResponse.json({ error: 'Master release data is required' }, { status: 400 })
   }
 
   // add is_on_master field to each track
@@ -36,7 +40,7 @@ export async function POST(request: Request) {
 
   if (error) {
     console.error(error.code + ' ' + error.message)
-    return Response.json(
+    return NextResponse.json(
       {
         error: 'Failed to save master release: ' + error.message,
         status: 'error',
@@ -45,7 +49,7 @@ export async function POST(request: Request) {
     )
   }
 
-  return Response.json({
+  return NextResponse.json({
     message: 'Master saved successfully!',
     status: 'success',
   })
