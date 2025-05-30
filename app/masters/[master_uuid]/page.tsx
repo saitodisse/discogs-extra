@@ -165,7 +165,9 @@ export default async function MasterPage({ params }: { params: Promise<{ master_
             <div className="mb-6">
               <h2 className="mb-2 text-xl font-semibold">Main Tracklist</h2>
               <div className="divide-y divide-muted">
-                {main_tracks?.map((track, index) => <TrackItem key={index} track={track} />)}
+                {main_tracks?.map((track, index) => (
+                  <TrackItem key={index} track={track} className="py-2" />
+                ))}
               </div>
             </div>
 
