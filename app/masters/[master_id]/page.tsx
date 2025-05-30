@@ -21,8 +21,8 @@ import {
 import { Track } from 'disconnect'
 import { TrackItem } from '../components/TrackItem'
 
-export default async function MasterPage({ params }: { params: Promise<{ master_uuid: string }> }) {
-  const { master_uuid } = await params
+export default async function MasterPage({ params }: { params: Promise<{ master_id: string }> }) {
+  const { master_id } = await params
 
   const supabase = await createClient()
   const {
@@ -32,7 +32,11 @@ export default async function MasterPage({ params }: { params: Promise<{ master_
   if (!user) {
     return <div className="container mx-auto p-4">You must be signed in to view this page.</div>
   }
-  const releaseResult = await supabase.from('releases').select('*').eq('id', master_uuid).single()
+  const releaseResult = await supabase
+    .from('releases')
+    .select('*')
+    .eq('master_id', master_id)
+    .single()
   const master: ReleaseDb = releaseResult.data
 
   let main_tracks: Track[] = []
@@ -67,7 +71,7 @@ export default async function MasterPage({ params }: { params: Promise<{ master_
         <div className="grid gap-6 p-6 md:grid-cols-[300px_1fr]">
           {/* Release Cover */}
           <div className="relative aspect-square overflow-hidden rounded-lg bg-muted">
-            {master.images_json && master.images_json[0] ? (
+            {master.images_json && master.images_json?.[0] ? (
               <img
                 src={master.images_json[0].uri}
                 alt={master.title}
@@ -84,13 +88,22 @@ export default async function MasterPage({ params }: { params: Promise<{ master_
           <div>
             <h1 className="mb-2 text-3xl font-bold">{master.title}</h1>
 
-            <div className="mb-4 flex">
+            <div className="mb-4 flex items-baseline">
               <span className="text-sm text-primary">Master ID: {master.master_id}</span>
               {master.releases_ids && master.releases_ids.length > 0 && (
-                <span className="ml-4 text-sm text-muted-foreground">
+                <span
+                  className="ml-4 text-sm text-muted-foreground"
+                  title={master.releases_ids.join(', ')}
+                >
                   ({master.releases_ids.length} releases)
                 </span>
               )}
+              <Link
+                href={`/masters/${master.master_id}/json`}
+                className="ml-4 text-xs text-primary/60 underline hover:text-primary/90"
+              >
+                JSON
+              </Link>
             </div>
 
             <a

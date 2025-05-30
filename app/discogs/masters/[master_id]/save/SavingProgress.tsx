@@ -7,7 +7,6 @@ import { Progress } from '@/components/ui/progress'
 import { Textarea } from '@/components/ui/textarea'
 import { mergeExtraArtistsData, mergeTracksData } from '@/lib/merge-utils'
 import { v4 as uuid } from 'uuid'
-import { ReleaseDb } from '../../../../../types/ReleaseDb'
 import { debug_saveJsonToTmp } from './actions'
 
 interface SavingProgressProps {

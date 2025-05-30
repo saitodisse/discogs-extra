@@ -53,6 +53,13 @@ export function MasterClient({ master }: MasterClientProps) {
                     {index < master.artists.length - 1 ? ', ' : ''}
                   </Link>
                 ))}
+
+              <Link
+                href={`/discogs/masters/${master.id}/json`}
+                className="ml-4 text-xs text-primary/60 underline hover:text-primary/90"
+              >
+                JSON
+              </Link>
             </div>
 
             <div className="mb-6 flex items-center gap-4 font-thin">

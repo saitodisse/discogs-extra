@@ -50,16 +50,35 @@ Complete auth system with sign up, sign in, password reset, and SSR support.
 ## Project Structure
 
 ```
-app/
-├── (auth-pages)/          # Authentication pages
-├── discogs/              # Discogs API routes
-├── protected/            # Protected user content
-└── auth/callback/        # OAuth callback
-
-components/
-├── ui/                   # shadcn/ui components
-└── tutorial/             # Setup guides
+├── app/                      # Next.js App Router directory
+│   ├── (auth-pages)         # Authentication related pages
+│   ├── api/                 # API routes
+│   │   ├── db/             # Database-related API endpoints
+│   │   ├── discogs/        # Discogs API integration endpoints 
+│   │   └── discogsSite/    # Direct Discogs site scraping endpoints
+│   ├── discogs/            # Discogs feature pages
+│   └── masters/            # Master releases pages
+├── components/             # Reusable UI components
+│   ├── ui/                # shadcn/ui components
+│   ├── tutorial/          # Tutorial-related components
+│   └── typography/        # Typography-related components
+├── lib/                   # Core utilities and business logic
+├── sql/                   # Database schema and migrations
+├── types/                 # TypeScript type definitions
+│   ├── discogs_site/     # Discogs site API types
+│   ├── disconnect/       # Disconnect library types
+│   └── ReleaseDb.ts     # Database types
+└── utils/                # Utility functions
+    └── supabase/        # Supabase client utilities
 ```
+
+### Key Features
+
+- **Authentication**: Supabase-powered auth system with sign-in, sign-up, and password reset
+- **Discogs Integration**: Search and browse Discogs database with release details
+- **Master Releases**: View and manage master releases with their variants
+- **Modern UI**: Built with shadcn/ui components and Tailwind CSS
+- **Type Safety**: Full TypeScript support with comprehensive type definitions
 
 ## Deployment
 

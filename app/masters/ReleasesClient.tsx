@@ -107,19 +107,21 @@ const ReleaseListItem = ({ release }: ReleaseListItemProps) => {
     <TableRow>
       <TableCell className="w-[100px]">
         {thumbnail ? (
-          <Image
-            src={thumbnail}
-            alt={release.title}
-            width={64}
-            height={64}
-            className="rounded-md object-cover"
-          />
+          <Link href={`/masters/${release.master_id}`} className="hover:text-primary">
+            <Image
+              src={thumbnail}
+              alt={release.title}
+              width={64}
+              height={64}
+              className="rounded-md object-cover"
+            />
+          </Link>
         ) : (
           <NoImagePlaceholder />
         )}
       </TableCell>
       <TableCell>
-        <Link href={`/masters/${release.id}`} className="hover:text-primary">
+        <Link href={`/masters/${release.master_id}`} className="hover:text-primary">
           {release.title}
         </Link>
         <div className="text-sm text-muted-foreground">{release.artists_name.join(', ')}</div>
