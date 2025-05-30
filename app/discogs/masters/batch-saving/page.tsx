@@ -12,7 +12,6 @@ Essa pagina (#sym:BatchSavingMasterPage) vai receber o redirecionamento de app\d
 
 Funcionamento da página:
 
-- [ ] Faça que a página possa ser chamada via fetch de forma simples. se necessário crie uma API e altere a página original para que chame a API,  então dessa forma migre o código de servidor para esses novos endpoints.
 - [ ] Crie um lista com todos os masters ids
 - [ ] Quando o usuário clicar no botão, faça a chamada via fetch do "app\discogs\masters\[master_id]\save\page.tsx"
 - [ ] após o master ser carregado, vá para o próximo e repita até acabar

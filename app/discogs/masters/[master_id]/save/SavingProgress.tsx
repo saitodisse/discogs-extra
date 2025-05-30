@@ -5,18 +5,10 @@ import { MasterRelease, Release } from 'disconnect'
 import { Button } from '@/components/ui/button'
 import { Progress } from '@/components/ui/progress'
 import { Textarea } from '@/components/ui/textarea'
-import {
-  discogs_getAllReleasesByMasterId,
-  db_getReleaseByMasterId,
-  debug_saveJsonToTmp,
-  db_saveMasterAction,
-  mergeExtraArtistsData,
-  mergeTracksData,
-  discogs_getReleaseById,
-  db_deleteReleaseById,
-} from './actions'
+import { mergeExtraArtistsData, mergeTracksData } from '@/lib/merge-utils'
 import { v4 as uuid } from 'uuid'
 import { ReleaseDb } from '../../../../../types/ReleaseDb'
+import { debug_saveJsonToTmp } from './actions'
 
 interface SavingProgressProps {
   master: MasterRelease
@@ -66,11 +58,21 @@ export function SavingProgress({ master }: SavingProgressProps) {
 
       addDebugMessage(`[masterDb] check or create if master exists on database...`)
       // masterDb: get or create new entry
-      let { data: masterDb, is_first_save } = await db_getReleaseByMasterId(master)
+      const responseDb = await fetch('/api/db/getReleaseByMasterId', {
+        method: 'POST',
+        body: JSON.stringify({ master }),
+      })
+      const { data: initialMasterDb, is_first_save } = await responseDb.json()
 
+      let masterDb = initialMasterDb
       if (!masterDb) {
         addDebugMessage(`Master with ID: ${master.id} not found in database, creating new entry...`)
-        await db_saveMasterAction({ master: masterDb, is_first_save })
+        const saveResponse = await fetch('/api/db/saveMasterAction', {
+          method: 'POST',
+          body: JSON.stringify({ master: masterDb, is_first_save }),
+        })
+        const saveResult = await saveResponse.json()
+        if (!saveResponse.ok) throw new Error(saveResult.error)
         setProgress(15)
       } else {
         await debug_saveJsonToTmp({
@@ -82,7 +84,11 @@ export function SavingProgress({ master }: SavingProgressProps) {
       }
 
       addDebugMessage(`[discogs] fetching all releases from master ${master.id}...`)
-      const releasesFromMaster = await discogs_getAllReleasesByMasterId(master.id)
+      const releasesResponse = await fetch(
+        `/api/discogs/getAllReleasesByMasterId?masterId=${master.id}`
+      )
+      if (!releasesResponse.ok) throw new Error('Failed to fetch releases')
+      const releasesFromMaster = await releasesResponse.json()
       addDebugMessage(
         `[discogs] found ${releasesFromMaster.versions.length} releases for master ${master.id}`
       )
@@ -97,7 +103,11 @@ export function SavingProgress({ master }: SavingProgressProps) {
       addDebugMessage(`each release will contribute ${eachReleaseProgress.toFixed(2)}% to progress`)
       for (const releaseVersionItem of releasesFromMaster.versions) {
         if (releaseVersionItem) {
-          const releaseData: Release = await discogs_getReleaseById(releaseVersionItem.id)
+          const releaseResponse = await fetch(
+            `/api/discogs/getReleaseById?releaseId=${releaseVersionItem.id}`
+          )
+          if (!releaseResponse.ok) throw new Error('Failed to fetch release')
+          const releaseData: Release = await releaseResponse.json()
           addDebugMessage(`[${releaseVersionItem.id}] fetched release (*)`)
 
           await debug_saveJsonToTmp({
@@ -108,11 +118,13 @@ export function SavingProgress({ master }: SavingProgressProps) {
 
           // Merge release data
           addDebugMessage(`[${releaseVersionItem.id}] mergeTracksData`)
-          masterDb = await mergeTracksData(masterDb, releaseData)
+          const mergedTracks = await mergeTracksData(masterDb, releaseData)
+          masterDb = { ...masterDb, ...mergedTracks }
 
           // Merge extra artists
           addDebugMessage(`[${releaseVersionItem.id}] mergeExtraArtistsData`)
-          masterDb = await mergeExtraArtistsData(masterDb, [releaseData])
+          const mergedArtists = await mergeExtraArtistsData(masterDb, [releaseData])
+          masterDb = { ...masterDb, ...mergedArtists }
 
           addDebugMessage(`[${releaseVersionItem.id}] merged release data for ${releaseData.id}`)
           setProgress((prev) => prev + eachReleaseProgress)
@@ -132,7 +144,15 @@ export function SavingProgress({ master }: SavingProgressProps) {
         lastPath: master.id.toString(),
       })
 
-      const result = await db_saveMasterAction({ master: masterDb, is_first_save: false })
+      const resultResponse = await fetch('/api/db/saveMasterAction', {
+        method: 'POST',
+        body: JSON.stringify({ master: masterDb, is_first_save: false }),
+      })
+      if (!resultResponse.ok) {
+        const error = await resultResponse.json()
+        throw new Error(error.message)
+      }
+      const result = await resultResponse.json()
       setProgress(90)
 
       // Complete
@@ -168,13 +188,23 @@ export function SavingProgress({ master }: SavingProgressProps) {
       addDebugMessage(`Deleting master with ID: ${master.id}...`)
 
       addDebugMessage(`Getting master with ID: ${master.id}...`)
-      let { data: masterDb } = await db_getReleaseByMasterId(master)
+      const masterResponse = await fetch('/api/db/getReleaseByMasterId', {
+        method: 'POST',
+        body: JSON.stringify({ master }),
+      })
+      const { data: masterDb } = await masterResponse.json()
       if (!masterDb) {
         addDebugMessage(`Master with ID: ${master.id} not found in database.`)
         return
       }
 
-      await db_deleteReleaseById(masterDb.id)
+      const deleteResponse = await fetch(`/api/db/deleteReleaseById?releaseId=${masterDb.id}`, {
+        method: 'DELETE',
+      })
+      if (!deleteResponse.ok) {
+        const error = await deleteResponse.json()
+        throw new Error(error.message)
+      }
       setProgress(50)
 
       addDebugMessage(`Master with ID: ${masterDb.id} deleted successfully.`)
