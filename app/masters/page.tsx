@@ -1,7 +1,5 @@
 import { createClient } from '@/utils/supabase/server'
-import { ReleasesClient } from './ReleasesClient'
-import Link from 'next/link'
-import 'server-only'
+import { MastersClient } from './MastersClient'
 import type { ReleaseDb } from '@/types/ReleaseDb'
 import {
   Breadcrumb,
@@ -51,7 +49,7 @@ export default async function MastersPage({ params, searchParams }: PageProps) {
         </Breadcrumb>
       </div>
 
-      <ReleasesClient releases={releases} initialView={view} />
+      <MastersClient releases={releases} initialView={view} />
     </div>
   )
 }

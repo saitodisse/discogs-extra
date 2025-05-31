@@ -36,7 +36,7 @@ export function BatchSavingMasterPageClient({
           behavior: 'smooth',
         })
       }
-    }, 200)
+    }, 100)
   }, [])
 
   const processMaster = async (masterId: string) => {
@@ -99,7 +99,7 @@ export function BatchSavingMasterPageClient({
           addDebugMessage(`[${masterId}][${releaseVersionItem.id}] Data merged`)
 
           // Rate limiting delay
-          await new Promise((resolve) => setTimeout(resolve, 600))
+          await new Promise((resolve) => setTimeout(resolve, 450))
         }
       }
 

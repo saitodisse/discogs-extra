@@ -16,6 +16,19 @@ import { Card } from '@/components/ui/card'
 import Link from 'next/link'
 import Image from 'next/image'
 import type { ReleaseDb } from '@/types/ReleaseDb'
+import { Button } from '@/components/ui/button'
+import { toast } from 'sonner'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '@/components/ui/alert-dialog'
 
 const NoImagePlaceholder = () => (
   <div className="flex h-[100px] w-[100px] items-center justify-center rounded bg-muted text-muted-foreground">
@@ -63,13 +76,15 @@ const ReleaseCard = ({ release }: ReleaseCardProps) => {
     <Card className="flex flex-col space-y-3 p-4">
       <div className="relative aspect-square w-full overflow-hidden rounded-md bg-muted">
         {thumbnail ? (
-          <Image
-            src={thumbnail}
-            alt={release.title}
-            fill
-            className="object-cover"
-            sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
-          />
+          <Link href={`/masters/${release.master_id}`} className="hover:text-primary">
+            <Image
+              src={thumbnail}
+              alt={release.title}
+              fill
+              className="object-cover"
+              sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+            />
+          </Link>
         ) : (
           <NoImagePlaceholder />
         )}
@@ -77,13 +92,23 @@ const ReleaseCard = ({ release }: ReleaseCardProps) => {
 
       <div className="space-y-2">
         <div className="text-lg font-semibold">
-          <Link href={`/masters/${release.id}`} className="hover:text-primary">
+          <Link href={`/masters/${release.master_id}`} className="hover:text-primary">
             {release.title}
           </Link>
         </div>
 
         <div className="space-y-1 text-sm text-muted-foreground">
-          <div>Artists: {release.artists_name.join(', ')}</div>
+          {release.artists_name?.map((artist, index) => (
+            <span key={index}>
+              <Link
+                href={`/discogs/artists/${release.artists_id[index]}`}
+                className="underline hover:text-primary"
+              >
+                {artist}
+              </Link>
+              {index < release.artists_name.length - 1 && ', '}
+            </span>
+          ))}
           <div>Year: {release.year_of_release || '-'}</div>
           <div>Country: {release.country || '-'}</div>
         </div>
@@ -98,6 +123,68 @@ const ReleaseCard = ({ release }: ReleaseCardProps) => {
 
 interface ReleaseListItemProps {
   release: ReleaseDb
+}
+
+interface DeleteConfirmationProps {
+  releaseId: string
+  title: string
+}
+
+const DeleteConfirmation = ({ releaseId, title }: DeleteConfirmationProps) => {
+  const handleDelete = async () => {
+    try {
+      const result = await fetch(`/api/db/deleteReleaseById?releaseId=${releaseId}`, {
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      })
+
+      if (!result.ok) {
+        const error = await result.json()
+        console.error('Error deleting release:', error)
+        toast.error('Failed to delete release', {
+          description: 'An error occurred while trying to delete the release.',
+        })
+        return
+      }
+
+      toast.success('Release deleted', {
+        description: `Successfully deleted "${title}".`,
+      })
+
+      window.location.reload()
+    } catch (error) {
+      console.error('Error deleting release:', error)
+      toast.error('Failed to delete release', {
+        description: 'An error occurred while trying to delete the release.',
+      })
+    }
+  }
+
+  return (
+    <AlertDialog>
+      <AlertDialogTrigger asChild>
+        <Button size="sm" className="bg-red-500 bg-opacity-50 py-1 text-xs hover:bg-red-600">
+          delete
+        </Button>
+      </AlertDialogTrigger>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>Are you sure you want to delete this release?</AlertDialogTitle>
+          <AlertDialogDescription>
+            You are about to delete &quot;{title}&quot;. This action cannot be undone.
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel>Cancel</AlertDialogCancel>
+          <AlertDialogAction onClick={handleDelete} className="bg-red-500 hover:bg-red-600">
+            Delete
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+  )
 }
 
 const ReleaseListItem = ({ release }: ReleaseListItemProps) => {
@@ -121,18 +208,20 @@ const ReleaseListItem = ({ release }: ReleaseListItemProps) => {
         )}
       </TableCell>
       <TableCell>
+        {release.artists_id?.map((id) => (
+          <Link key={id} href={`/discogs/artists/${id}`} className="hover:text-primary">
+            {release.artists_name.join(', ')}
+          </Link>
+        ))}
+      </TableCell>
+      <TableCell>
         <Link href={`/masters/${release.master_id}`} className="hover:text-primary">
           {release.title}
         </Link>
-        <div className="text-sm text-muted-foreground">{release.artists_name.join(', ')}</div>
       </TableCell>
       <TableCell>{release.year_of_release || '-'}</TableCell>
-      <TableCell>{release.country || '-'}</TableCell>
       <TableCell>
-        {release.formats_json && <DisplayFormats formats={release.formats_json} />}
-      </TableCell>
-      <TableCell>
-        <DisplayGenres genres={release.genres} styles={release.styles} />
+        <DeleteConfirmation releaseId={release.id} title={release.title} />
       </TableCell>
     </TableRow>
   )
@@ -143,7 +232,7 @@ interface ReleasesClientProps {
   initialView?: 'list' | 'grid'
 }
 
-export function ReleasesClient({ releases, initialView = 'list' }: ReleasesClientProps) {
+export function MastersClient({ releases, initialView = 'list' }: ReleasesClientProps) {
   const [view, setView] = useQueryState('view', { defaultValue: initialView })
 
   return (
@@ -170,10 +259,11 @@ export function ReleasesClient({ releases, initialView = 'list' }: ReleasesClien
           <Table>
             <TableHeader>
               <TableRow>
+                <TableHead>img</TableHead>
+                <TableHead>Artist</TableHead>
                 <TableHead>Title</TableHead>
                 <TableHead>Year</TableHead>
-                <TableHead>Country</TableHead>
-                <TableHead>Formats</TableHead>
+                <TableHead>Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
