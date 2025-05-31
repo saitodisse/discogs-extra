@@ -165,7 +165,11 @@ const DeleteConfirmation = ({ releaseId, title }: DeleteConfirmationProps) => {
   return (
     <AlertDialog>
       <AlertDialogTrigger asChild>
-        <Button size="sm" className="bg-red-500 bg-opacity-50 py-1 text-xs hover:bg-red-600">
+        <Button
+          variant="ghost"
+          size="sm"
+          className="text-xs text-muted-foreground hover:text-red-500"
+        >
           delete
         </Button>
       </AlertDialogTrigger>
